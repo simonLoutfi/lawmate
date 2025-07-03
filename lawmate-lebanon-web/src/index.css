@@ -1,0 +1,349 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import Arabic font */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* LawMate Design System */
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 215 25% 27%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 27%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 27%;
+
+    --primary: 215 32% 27%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 45 100% 51%;
+    --secondary-foreground: 215 32% 27%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 45 100% 51%;
+    --accent-foreground: 215 32% 27%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 215 32% 27%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 215 25% 27%;
+    --sidebar-primary: 215 32% 27%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 215 32% 27%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 215 32% 27%;
+
+    /* LawMate specific colors */
+    --lawmate-midnight: #1F2A44;
+    --lawmate-slate: #34495E;
+    --lawmate-teal: #26A69A;
+    --lawmate-light-bg: #FAFAFA;
+  }
+
+  .dark {
+    --background: 215 32% 27%;
+    --foreground: 210 40% 98%;
+
+    --card: 215 32% 27%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 215 32% 27%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 215 32% 27%;
+
+    --secondary: 45 100% 51%;
+    --secondary-foreground: 215 32% 27%;
+
+    --muted: 215 25% 20%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 45 100% 51%;
+    --accent-foreground: 215 32% 27%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 215 25% 20%;
+    --input: 215 25% 20%;
+    --ring: 212.7 26.8% 83.9%;
+    
+    --sidebar-background: 215 32% 27%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 45 100% 51%;
+    --sidebar-primary-foreground: 215 32% 27%;
+    --sidebar-accent: 215 25% 20%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 215 25% 20%;
+    --sidebar-ring: 45 100% 51%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border transition-all duration-200 ease-in-out;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', 'Noto Sans Arabic', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+  }
+
+  /* Enhanced typography */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+    line-height: 1.2;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl lg:text-5xl;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+
+  p {
+    @apply leading-relaxed;
+  }
+
+  /* Arabic text styling with minimum font size */
+  [dir="rtl"] {
+    font-family: 'Noto Sans Arabic', 'Inter', system-ui, sans-serif;
+    font-size: max(16px, 1rem);
+  }
+
+  [dir="rtl"] * {
+    text-align: right;
+  }
+
+  [dir="rtl"] .text-left {
+    text-align: right !important;
+  }
+
+  [dir="rtl"] .text-right {
+    text-align: left !important;
+  }
+
+  /* Focus styles for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-[#26A69A] ring-offset-2 ring-offset-background;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  /* Enhanced color utilities */
+  .bg-lawmate-midnight {
+    background-color: var(--lawmate-midnight);
+  }
+  
+  .bg-lawmate-slate {
+    background-color: var(--lawmate-slate);
+  }
+  
+  .bg-lawmate-teal {
+    background-color: var(--lawmate-teal);
+  }
+  
+  .bg-lawmate-light {
+    background-color: var(--lawmate-light-bg);
+  }
+  
+  .text-lawmate-midnight {
+    color: var(--lawmate-midnight);
+  }
+  
+  .text-lawmate-slate {
+    color: var(--lawmate-slate);
+  }
+  
+  .text-lawmate-teal {
+    color: var(--lawmate-teal);
+  }
+  
+  .border-lawmate-midnight {
+    border-color: var(--lawmate-midnight);
+  }
+  
+  .border-lawmate-teal {
+    border-color: var(--lawmate-teal);
+  }
+
+  /* Enhanced button styles */
+  .btn-primary {
+    @apply bg-[#26A69A] hover:bg-[#26A69A]/90 text-white font-medium rounded-lg px-6 py-3 transition-all duration-200 ease-in-out transform hover:scale-[1.02] hover:shadow-lg focus:scale-[1.02] focus:shadow-lg active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply bg-white border-2 border-gray-200 hover:border-[#26A69A] text-gray-700 hover:text-[#26A69A] font-medium rounded-lg px-6 py-3 transition-all duration-200 ease-in-out transform hover:scale-[1.02] hover:shadow-md focus:scale-[1.02] focus:shadow-md active:scale-[0.98];
+  }
+
+  /* Enhanced card styles */
+  .card-hover {
+    @apply transition-all duration-300 ease-in-out transform hover:-translate-y-2 hover:shadow-xl;
+  }
+
+  .card-interactive {
+    @apply cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-[1.02] hover:shadow-lg focus-within:scale-[1.02] focus-within:shadow-lg active:scale-[0.98];
+  }
+
+  /* Enhanced spacing utilities */
+  .section-padding {
+    @apply py-16 lg:py-24;
+  }
+
+  .container-spacing {
+    @apply px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto;
+  }
+
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.4s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Enhanced RTL support improvements */
+  [dir="rtl"] .space-x-1 > :not([hidden]) ~ :not([hidden]) {
+    margin-right: 0.25rem;
+    margin-left: 0;
+  }
+
+  [dir="rtl"] .space-x-2 > :not([hidden]) ~ :not([hidden]) {
+    margin-right: 0.5rem;
+    margin-left: 0;
+  }
+
+  [dir="rtl"] .space-x-3 > :not([hidden]) ~ :not([hidden]) {
+    margin-right: 0.75rem;
+    margin-left: 0;
+  }
+
+  [dir="rtl"] .space-x-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-right: 1rem;
+    margin-left: 0;
+  }
+
+  [dir="rtl"] .space-x-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-right: 1.5rem;
+    margin-left: 0;
+  }
+
+  [dir="rtl"] .space-x-8 > :not([hidden]) ~ :not([hidden]) {
+    margin-right: 2rem;
+    margin-left: 0;
+  }
+
+  /* Accessibility improvements */
+  .sr-only {
+    @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+  }
+
+  /* Minimum touch target size */
+  .touch-target {
+    @apply min-w-[44px] min-h-[44px] flex items-center justify-center;
+  }
+
+  /* Legal document styling */
+  .legal-watermark {
+    position: relative;
+  }
+
+  .legal-watermark::after {
+    content: 'بموجب المادة ٨٤ من قانون المحاماة اللبناني';
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    font-size: 10px;
+    opacity: 0.3;
+    color: var(--lawmate-midnight);
+    pointer-events: none;
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .btn-primary {
+      @apply border-2 border-black;
+    }
+    
+    .card-hover {
+      @apply border-2 border-gray-900;
+    }
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
