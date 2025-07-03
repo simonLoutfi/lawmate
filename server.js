@@ -13,8 +13,8 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: "https://lawmate-chi.vercel.app/",
-  credentials: true // If you're using cookies or auth headers
+  origin: true,  // Reflects the request origin
+  credentials: true
 }));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
