@@ -8,7 +8,7 @@ import google.generativeai as genai
 import numpy as np
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-
+import os
 
 # drive.mount('/content/drive')
 model = SentenceTransformer("acayir64/arabic-embedding-model-pair-class2")
@@ -51,7 +51,8 @@ article_vectors = np.load("embeddings.npy")
 index = faiss.read_index("faiss_index.index")
 
 # Set your API key
-genai.configure(api_key="AIzaSyDkvSL8COT7e-C7Wk_ClYnVOm5QLkNXieE")
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# genai.configure(api_key="AIzaSyDkvSL8COT7e-C7Wk_ClYnVOm5QLkNXieE")
 
 def answer_like_lawyer_gemini(question, retrieved_articles):
     context = "\n\n".join([
@@ -215,4 +216,5 @@ def askai():
 
 
 if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5001)))
+
