@@ -39,7 +39,7 @@ const handleSend = async () => {
   setIsTyping(true);
 
   try {
-    const res = await fetch('http://localhost:5001/api/askai/short', {
+    const res = await fetch('https://lawmate-1.onrender.com/api/askai/short', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
