@@ -12,7 +12,10 @@ const PORT = process.env.PORT || 5000;
 
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: "https://lawmate-chi.vercel.app/",
+  credentials: true // If you're using cookies or auth headers
+}));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
@@ -28,85 +31,85 @@ const pool = mysql.createPool({
 });
 
 
-// Initialize database tables
-const initDb = async () => {
-  try {
-    const connection = await pool.getConnection();
+// // Initialize database tables
+// const initDb = async () => {
+//   try {
+//     const connection = await pool.getConnection();
     
-    // Create users table
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        firstName VARCHAR(50) NOT NULL,
-        lastName VARCHAR(50) NOT NULL,
-        email VARCHAR(100) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL,
-        userType ENUM('user', 'lawyer', 'mokhtar') NOT NULL,
-        businessName VARCHAR(100),
-        licenseNumber VARCHAR(100),
-        barAssociation VARCHAR(100),
-        mokhtarOffice VARCHAR(100),
-        isApproved BOOLEAN DEFAULT FALSE,
-        subscriptionPlan ENUM('free', 'starter', 'pro') DEFAULT 'free',
-        subscriptionStatus ENUM('active', 'canceled', 'expired') DEFAULT 'active',
-        subscriptionStartDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-        subscriptionEndDate DATETIME,
-        autoRenew BOOLEAN DEFAULT FALSE,
-        isVerified BOOLEAN DEFAULT FALSE,
-        verificationToken VARCHAR(255),
-        verificationExpires DATETIME,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )
-    `);
+//     // Create users table
+//     await connection.query(`
+//       CREATE TABLE IF NOT EXISTS users (
+//         id INT AUTO_INCREMENT PRIMARY KEY,
+//         firstName VARCHAR(50) NOT NULL,
+//         lastName VARCHAR(50) NOT NULL,
+//         email VARCHAR(100) NOT NULL UNIQUE,
+//         password VARCHAR(255) NOT NULL,
+//         userType ENUM('user', 'lawyer', 'mokhtar') NOT NULL,
+//         businessName VARCHAR(100),
+//         licenseNumber VARCHAR(100),
+//         barAssociation VARCHAR(100),
+//         mokhtarOffice VARCHAR(100),
+//         isApproved BOOLEAN DEFAULT FALSE,
+//         subscriptionPlan ENUM('free', 'starter', 'pro') DEFAULT 'free',
+//         subscriptionStatus ENUM('active', 'canceled', 'expired') DEFAULT 'active',
+//         subscriptionStartDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+//         subscriptionEndDate DATETIME,
+//         autoRenew BOOLEAN DEFAULT FALSE,
+//         isVerified BOOLEAN DEFAULT FALSE,
+//         verificationToken VARCHAR(255),
+//         verificationExpires DATETIME,
+//         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+//         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+//       )
+//     `);
 
-    // Create documents table
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS documents (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        userId INT NOT NULL,
-        title VARCHAR(255) NOT NULL,
-        content TEXT NOT NULL,
-        type VARCHAR(50) NOT NULL,
-        isTemplate BOOLEAN DEFAULT FALSE,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-      )
-    `);
+//     // Create documents table
+//     await connection.query(`
+//       CREATE TABLE IF NOT EXISTS documents (
+//         id INT AUTO_INCREMENT PRIMARY KEY,
+//         userId INT NOT NULL,
+//         title VARCHAR(255) NOT NULL,
+//         content TEXT NOT NULL,
+//         type VARCHAR(50) NOT NULL,
+//         isTemplate BOOLEAN DEFAULT FALSE,
+//         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+//         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+//         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+//       )
+//     `);
 
-    // Create document_tags table for many-to-many relationship
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS document_tags (
-        documentId INT NOT NULL,
-        tag VARCHAR(50) NOT NULL,
-        PRIMARY KEY (documentId, tag),
-        FOREIGN KEY (documentId) REFERENCES documents(id) ON DELETE CASCADE
-      )
-    `);
+//     // Create document_tags table for many-to-many relationship
+//     await connection.query(`
+//       CREATE TABLE IF NOT EXISTS document_tags (
+//         documentId INT NOT NULL,
+//         tag VARCHAR(50) NOT NULL,
+//         PRIMARY KEY (documentId, tag),
+//         FOREIGN KEY (documentId) REFERENCES documents(id) ON DELETE CASCADE
+//       )
+//     `);
 
-    // Create user_documents table for file uploads
-    await connection.query(`
-      CREATE TABLE IF NOT EXISTS user_documents (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        userId INT NOT NULL,
-        documentUrl VARCHAR(255) NOT NULL,
-        documentType VARCHAR(50) NOT NULL,
-        uploadedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
-      )
-    `);
+//     // Create user_documents table for file uploads
+//     await connection.query(`
+//       CREATE TABLE IF NOT EXISTS user_documents (
+//         id INT AUTO_INCREMENT PRIMARY KEY,
+//         userId INT NOT NULL,
+//         documentUrl VARCHAR(255) NOT NULL,
+//         documentType VARCHAR(50) NOT NULL,
+//         uploadedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+//         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+//       )
+//     `);
 
-    connection.release();
-    console.log('Database tables initialized');
-  } catch (error) {
-    console.error('Error initializing database:', error);
-    process.exit(1);
-  }
-};
+//     connection.release();
+//     console.log('Database tables initialized');
+//   } catch (error) {
+//     console.error('Error initializing database:', error);
+//     process.exit(1);
+//   }
+// };
 
-// Initialize database on startup
-initDb();
+// // Initialize database on startup
+// initDb();
 
 // File upload configuration
 const storage = multer.diskStorage({
