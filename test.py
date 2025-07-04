@@ -199,4 +199,5 @@ def askai_short():
     
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
+    print(f"→ Server running on port {port}")  # Verify in Render logs
     app.run(host="0.0.0.0", port=port)
