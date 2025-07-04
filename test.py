@@ -10,8 +10,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 
-# drive.mount('/content/drive')
-model = SentenceTransformer("acayir64/arabic-embedding-model-pair-class2")
+# Optimized model loading with reduced precision
+model = SentenceTransformer("acayir64/arabic-embedding-model-pair-class2", device='cpu')
+model = model.half()  # Reduce model memory footprint by 50%
 
 json_folder = Path("json_articles")
 law_articles = {}
@@ -48,7 +49,7 @@ with open("articles.pkl", "rb") as f:
 article_vectors = np.load("embeddings.npy")
 
 # Load FAISS index
-index = faiss.read_index("faiss_index.index")
+index = faiss.read_index("faiss_index_quantized.index")
 
 # Set your API key
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -143,27 +144,28 @@ CORS(app)
 def askai_short():
     data = request.json
     question = data.get('question', '')
-    lang = data.get('lang', 'ar')  # Expecting 'ar' or 'en'
+    lang = data.get('lang', 'ar')
 
     if not question:
         return jsonify({'error': 'No question provided'}), 400
 
-    # Translate question if needed
     if lang == 'en':
         translated_question = translate_text(question, "الإنجليزية", "العربية")
     else:
         translated_question = question
 
-    # Retrieve relevant articles using FAISS
-    query_vec = model.encode([translated_question], convert_to_numpy=True, normalize_embeddings=True)
-    D, I = index.search(np.array(query_vec), 3)
+    # Convert to float32 after half-precision encoding
+    query_vec = model.encode([translated_question], 
+                           convert_to_numpy=True, 
+                           normalize_embeddings=True,
+                           precision='half').astype(np.float32)
+    
+    D, I = index.search(query_vec, 3)
     retrieved_articles = [flat_articles[i] for i in I[0]]
 
-    # Generate short Arabic answer
     short_answer_ar = short_conclusion_gemini(translated_question, retrieved_articles)
 
     if lang == 'en':
-        # Translate short answer back to English
         short_answer_en = translate_text(short_answer_ar, "العربية", "الإنجليزية")
         return jsonify({
             'short_answer': short_answer_en,
@@ -175,7 +177,6 @@ def askai_short():
             'short_answer': short_answer_ar,
             'articles': retrieved_articles
         })
-
 
 @app.route('/api/askai', methods=['POST'])
 def askai():
