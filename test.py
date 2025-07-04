@@ -11,7 +11,8 @@ from flask_cors import CORS
 import os
 
 # drive.mount('/content/drive')
-model = SentenceTransformer("sentence-transformers/distiluse-base-multilingual-cased-v2")
+model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+
 
 
 json_folder = Path("json_articles")
