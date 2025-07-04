@@ -11,7 +11,8 @@ from flask_cors import CORS
 import os
 
 # drive.mount('/content/drive')
-model = SentenceTransformer("acayir64/arabic-embedding-model-pair-class2")
+model = SentenceTransformer("sentence-transformers/distiluse-base-multilingual-cased-v2")
+
 
 json_folder = Path("json_articles")
 law_articles = {}
