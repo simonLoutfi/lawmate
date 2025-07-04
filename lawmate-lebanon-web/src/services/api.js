@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: 'https://lawmate-fhp7.onrender.com/api',
+  baseURL: 'https://lawmate-hj6p.onrender.com/api',
   headers: {
     'Content-Type': 'application/json',
   },
