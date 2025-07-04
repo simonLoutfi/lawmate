@@ -46,7 +46,7 @@ const AskAI = () => {
 
 const generateResponse = async (userInput: string): Promise<string> => {
   try {
-    const response = await fetch('https://lawmate-1.onrender.com/api/askai', {
+    const response = await fetch('https://huggingface.co/spaces/simonLoutfi/lawmate/api/askai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: userInput, lang: language }), // <-- add lang

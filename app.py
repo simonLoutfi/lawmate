@@ -1,64 +1,94 @@
+from pathlib import Path
+import json
+from sentence_transformers import SentenceTransformer
+import pickle
+import numpy as np
+import faiss
+import google.generativeai as genai
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-import json
-from pathlib import Path
-import google.generativeai as genai
+from werkzeug.utils import cached_property
+from threading import Thread
 
+# Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
-# 1. Load Law Data Only
-def load_law_data():
-    law_articles = {}
-    json_folder = Path("json_articles")
+class ResourceLoader:
+    """Lazy-load heavy resources only when needed"""
     
-    for file in json_folder.glob("*.json"):
-        try:
-            with open(file, "r", encoding="utf-8") as f:
-                law_articles[file.stem] = json.load(f)
-        except Exception as e:
-            print(f"Error loading {file}: {str(e)}")
-    
-    print(f"Loaded {sum(len(v) for v in law_articles.values())} articles from {len(law_articles)} laws")
-    return law_articles
+    @cached_property
+    def sentence_model(self):
+        print("Loading SentenceTransformer model (this happens only once)...")
+        model = SentenceTransformer("acayir64/arabic-embedding-model-pair-class2", device='cpu')
+        return model.half()  # 50% memory reduction
 
-# Load data at startup
-law_articles = load_law_data()
+    @cached_property
+    def faiss_index(self):
+        print("Loading FAISS index (this happens only once)...")
+        # Load pre-processed data
+        with open("articles.pkl", "rb") as f:
+            self.flat_articles = pickle.load(f)
+        vectors = np.load("embeddings.npy")
+        index = faiss.read_index("faiss_index_quantized.index")
+        return index
 
-# 2. Configure Gemini
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+    @cached_property
+    def gemini_model(self):
+        print("Initializing Gemini (this happens only once)...")
+        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        return genai.GenerativeModel("gemini-2.0-flash")
 
-@app.route('/health')
-def health_check():
-    return jsonify({"status": "healthy"}), 200
+# Global lazy loader
+loader = ResourceLoader()
 
-def find_relevant_articles(question):
-    """Use Gemini to find relevant articles from loaded law data"""
-    articles_text = "\n".join(
-        f"{law_name} Article {art['article_number']}: {art['text']}"
-        for law_name, articles in law_articles.items()
-        for art in articles
-    )
+# Warm-up in background (optional)
+def warm_up_resources():
+    print("Background pre-loading of resources...")
+    _ = loader.sentence_model
+    _ = loader.faiss_index
+
+@app.before_first_request
+def startup():
+    Thread(target=warm_up_resources).start()
+
+# Helper functions
+def answer_like_lawyer_gemini(question, retrieved_articles):
+    context = "\n\n".join([
+        f"📄 {a['law']} - المادة {a['article_number']}:\n{a['text']}"
+        for a in retrieved_articles
+    ])
     
     prompt = f"""
-    Analyze this legal question and identify the 3 most relevant articles from the context below.
-    Return ONLY a JSON array in this format: 
-    [{{"law": "law_name", "article_number": "123"}}, ...]
+أنت محامٍ قانوني محترف ومتخصص في القوانين اللبنانية. أجب على السؤال التالي بصيغة قانونية رسمية ومقنعة، واستند إلى المواد القانونية الواردة أدناه:
 
-    Question: {question}
+🟠 السؤال:
+{question}
 
-    Available Articles:
-    {articles_text}
-    """
-    
-    try:
-        response = model.generate_content(prompt)
-        return json.loads(response.text)
-    except Exception as e:
-        print(f"Gemini error: {str(e)}")
-        return []
+📘 المواد القانونية:
+{context}
+
+🔵 الجواب:
+"""
+    response = loader.gemini_model.generate_content(prompt)
+    return response.text.strip()
+
+def translate_text(text, source_lang, target_lang):
+    prompt = f"""ترجم النص التالي من {source_lang} إلى {target_lang} بدون أي إضافات:
+
+النص:
+{text}
+
+الترجمة:"""
+    response = loader.gemini_model.generate_content(prompt)
+    return response.text.strip()
+
+# Routes
+@app.route('/health')
+def health_check():
+    """Critical for Render - must respond quickly without loading resources"""
+    return jsonify({"status": "healthy"}), 200
 
 @app.route('/api/askai', methods=['POST'])
 def askai():
@@ -69,33 +99,103 @@ def askai():
     if not question:
         return jsonify({'error': 'No question provided'}), 400
 
-    # Get relevant articles using Gemini
-    relevant_articles = find_relevant_articles(question)
+    # Translation handling
+    if lang == 'en':
+        translated_question = translate_text(question, "الإنجليزية", "العربية")
+    else:
+        translated_question = question
+
+    # Semantic search (lazy-loads sentence_model and faiss_index)
+    query_vec = loader.sentence_model.encode(
+        [translated_question],
+        convert_to_numpy=True,
+        normalize_embeddings=True,
+        precision='half'
+    ).astype(np.float32)
     
-    # Generate answer
-    context = "\n".join(
-        f"{art['law']} Article {art['article_number']}: "
-        f"{next(a['text'] for a in law_articles[art['law']] if a['article_number'] == art['article_number'])}"
-        for art in relevant_articles
-    )
+    D, I = loader.faiss_index.search(query_vec, 3)
+    retrieved_articles = [loader.flat_articles[i] for i in I[0]]
 
-    answer_prompt = f"""
-    As a legal expert, answer this question in {"Arabic" if lang == "ar" else "English"} 
-    using ONLY the provided context:
+    # Generate answer (lazy-loads gemini_model)
+    answer_arabic = answer_like_lawyer_gemini(translated_question, retrieved_articles)
 
-    Question: {question}
-
-    Context:
-    {context}
-    """
-
-    answer = model.generate_content(answer_prompt).text
-
+    if lang == 'en':
+        answer_english = translate_text(answer_arabic, "العربية", "الإنجليزية")
+        return jsonify({
+            'answer': answer_english,
+            'answer_ar': answer_arabic,
+            'articles': retrieved_articles
+        })
     return jsonify({
-        'answer': answer,
-        'articles': relevant_articles
+        'answer': answer_arabic,
+        'articles': retrieved_articles
     })
 
+@app.route('/api/askai/short', methods=['POST'])
+def askai_short():
+    data = request.json
+    question = data.get('question', '')
+    lang = data.get('lang', 'ar')
+
+    if not question:
+        return jsonify({'error': 'No question provided'}), 400
+
+    # Translation handling (lazy-loads Gemini if needed)
+    if lang == 'en':
+        translated_question = translate_text(question, "الإنجليزية", "العربية")
+    else:
+        translated_question = question
+
+    # Semantic search (lazy-loads sentence_model and faiss_index)
+    query_vec = loader.sentence_model.encode(
+        [translated_question],
+        convert_to_numpy=True,
+        normalize_embeddings=True,
+        precision='half'
+    ).astype(np.float32)
+    
+    D, I = loader.faiss_index.search(query_vec, 3)
+    retrieved_articles = [loader.flat_articles[i] for i in I[0]]
+
+    # Generate short answer (lazy-loads Gemini)
+    context = "\n\n".join([
+        f"📄 {a['law']} - المادة {a['article_number']}:\n{a['text']}"
+        for a in retrieved_articles
+    ])
+    
+    prompt = f"""
+أنت محامٍ قانوني محترف ومتخصص في القوانين اللبنانية. أجب على السؤال التالي بجملة واحدة قصيرة جداً (10-30 كلمة كحد أقصى) مستنداً إلى هذه القوانين، وبأسلوب واضح وسهل الفهم:
+
+🟠 السؤال:
+{translated_question}
+
+📘 المواد القانونية:
+{context}
+
+🔵 الخلاصة:
+"""
+    try:
+        short_answer_ar = loader.gemini_model.generate_content(prompt).text.strip()
+        
+        if lang == 'en':
+            short_answer_en = translate_text(short_answer_ar, "العربية", "الإنجليزية")
+            return jsonify({
+                'short_answer': short_answer_en,
+                'short_answer_ar': short_answer_ar,
+                'articles': retrieved_articles
+            })
+        return jsonify({
+            'short_answer': short_answer_ar,
+            'articles': retrieved_articles
+        })
+        
+    except Exception as e:
+        print(f"Gemini error: {str(e)}")
+        fallback_answer = "إجابة مختصرة: ينص القانون على ذلك" if lang == 'ar' else "Short answer: The law states this"
+        return jsonify({
+            'short_answer': fallback_answer,
+            'articles': retrieved_articles
+        })
+    
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5001))
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=True, host='0.0.0.0', port=8080)
