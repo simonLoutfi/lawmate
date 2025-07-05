@@ -5,6 +5,8 @@ import numpy as np
 import faiss
 import pickle
 import os
+from flask_cors import cross_origin
+
 
 # === Setup Gemini API ===
 print("=== STARTUP: Configuring Gemini API ===")
@@ -155,6 +157,7 @@ CORS(app,
 # The CORS extension will handle all the headers automatically
 
 @app.route('/api/askai/short', methods=['POST', 'OPTIONS'])
+@cross_origin(origins=["https://lawmate-lb.netlify.app", "http://localhost:3000"])
 def askai_short():
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
@@ -260,6 +263,7 @@ def askai_short():
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 @app.route('/api/askai', methods=['POST', 'OPTIONS'])
+@cross_origin(origins=["https://lawmate-lb.netlify.app", "http://localhost:3000"])
 def askai():
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
