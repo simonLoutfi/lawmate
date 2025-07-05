@@ -41,7 +41,11 @@ const handleSend = async () => {
   try {
     const res = await fetch('https://lawmate-1.onrender.com/api/askai/short', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      credentials: 'include',
       body: JSON.stringify({
         question: userMsg.text,
         lang: language === 'ar' ? 'ar' : 'en'  // ✅ specify language
