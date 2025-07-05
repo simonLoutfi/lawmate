@@ -167,7 +167,7 @@ def askai_short():
 
     except Exception as e:
         print(f"Error in askai_short: {str(e)}")
-        return _corsify_actual_response(jsonify({'error': str(e)})), 500)
+        return _corsify_actual_response(jsonify({'error': str(e)})), 500
 
 @app.route('/api/askai', methods=['POST', 'OPTIONS'])
 def askai():
