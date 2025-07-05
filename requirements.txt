@@ -1,6 +1,5 @@
 ﻿flask
 flask-cors
-sentence-transformers
 faiss-cpu
 google-generativeai==0.3.2
 numpy
