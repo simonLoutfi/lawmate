@@ -5,7 +5,6 @@ import numpy as np
 import faiss
 import pickle
 import os
-from flask_cors import cross_origin
 
 
 # === Setup Gemini API ===
@@ -157,7 +156,6 @@ CORS(app,
 # The CORS extension will handle all the headers automatically
 
 @app.route('/api/askai/short', methods=['POST', 'OPTIONS'])
-@cross_origin(origins=["https://lawmate-lb.netlify.app", "http://localhost:3000"])
 def askai_short():
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
@@ -263,16 +261,10 @@ def askai_short():
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 @app.route('/api/askai', methods=['POST', 'OPTIONS'])
-@cross_origin(origins=["https://lawmate-lb.netlify.app", "http://localhost:3000"])
 def askai():
-    # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
-        response = jsonify({'status': 'preflight'})
-        response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
-        return response, 200
-        
+        return '', 200  # Let Flask-CORS handle the headers
+    
     try:
         data = request.get_json()
         if not data:
@@ -284,59 +276,40 @@ def askai():
         if not question:
             return jsonify({'error': 'No question provided'}), 400
 
-        # Translate question if needed (English to Arabic for processing)
+        # Translate question if needed
         print("DEBUG: Starting translation...")
-        try:
-            if lang == 'en':
-                # If question is in English, translate to Arabic for processing
-                translated_question = translate_text(question, "English", "Arabic")
-                print(f"DEBUG: Translated question (EN->AR): {translated_question}")
-            else:
-                # If question is in Arabic, use as is
-                translated_question = question
-                print(f"DEBUG: Question already in Arabic: {translated_question}")
-        except Exception as e:
-            print(f"ERROR in translation: {str(e)}")
-            return jsonify({'error': f'Translation failed: {str(e)}'}), 500
-        
-        # Get relevant articles
+        if lang == 'en':
+            translated_question = translate_text(question, "English", "Arabic")
+        else:
+            translated_question = question
+
         query_vec = get_embedding_from_gemini(translated_question).reshape(1, -1)
         D, I = index.search(query_vec, 3)
         retrieved_articles = [flat_articles[i] for i in I[0]]
 
-        # Generate answer
         answer_arabic = answer_like_lawyer_gemini(translated_question, retrieved_articles)
-        
-        # Prepare response
-        response_data = {
-            'articles': retrieved_articles
-        }
-        
-        # Return answer in the same language as the question
-        if lang == 'en':
-            print("DEBUG: Translating answer to English...")
-            try:
-                # Translate the Arabic answer to English
-                answer_en = translate_text(answer_arabic, "Arabic", "English")
-                response_data['answer'] = answer_en
-                response_data['answer_en'] = answer_en
-                response_data['answer_ar'] = answer_arabic
-                print(f"DEBUG: English translation: {answer_en}")
-            except Exception as e:
-                print(f"ERROR in answer translation: {str(e)}")
-                return jsonify({'error': f'Answer translation failed: {str(e)}'}), 500
-        else:
-            # Question was in Arabic, return Arabic answer
-            response_data['answer'] = answer_arabic
-            response_data['answer_ar'] = answer_arabic
 
-        response = jsonify(response_data)
-        response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
-        return response
+        response_data = {'articles': retrieved_articles}
+
+        if lang == 'en':
+            answer_en = translate_text(answer_arabic, "Arabic", "English")
+            response_data.update({
+                'answer': answer_en,
+                'answer_en': answer_en,
+                'answer_ar': answer_arabic
+            })
+        else:
+            response_data.update({
+                'answer': answer_arabic,
+                'answer_ar': answer_arabic
+            })
+
+        return jsonify(response_data)
 
     except Exception as e:
         print(f"Error in askai: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)), debug=False)
