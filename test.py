@@ -7,14 +7,61 @@ import pickle
 import os
 
 # === Setup Gemini API ===
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+print("=== STARTUP: Configuring Gemini API ===")
+api_key = os.getenv("GOOGLE_API_KEY")
+if not api_key:
+    print("ERROR: GOOGLE_API_KEY environment variable not set")
+    raise ValueError("GOOGLE_API_KEY environment variable is required")
+
+genai.configure(api_key=api_key)
+print("SUCCESS: Gemini API configured")
 
 # === Load precomputed files ===
-with open("articles.pkl", "rb") as f:
-    flat_articles = pickle.load(f)
+print("=== STARTUP: Loading precomputed files ===")
+try:
+    with open("articles.pkl", "rb") as f:
+        flat_articles = pickle.load(f)
+    print(f"SUCCESS: Loaded {len(flat_articles)} articles")
+except FileNotFoundError:
+    print("ERROR: articles.pkl not found")
+    raise
+except Exception as e:
+    print(f"ERROR loading articles.pkl: {e}")
+    raise
 
-article_vectors = np.load("embeddings.npy")
-index = faiss.read_index("faiss_index.index")
+try:
+    article_vectors = np.load("embeddings.npy")
+    print(f"SUCCESS: Loaded embeddings with shape {article_vectors.shape}")
+except FileNotFoundError:
+    print("ERROR: embeddings.npy not found")
+    raise
+except Exception as e:
+    print(f"ERROR loading embeddings.npy: {e}")
+    raise
+
+try:
+    index = faiss.read_index("faiss_index.index")
+    print(f"SUCCESS: Loaded FAISS index with {index.ntotal} vectors")
+except FileNotFoundError:
+    print("ERROR: faiss_index.index not found")
+    raise
+except Exception as e:
+    print(f"ERROR loading faiss_index.index: {e}")
+    raise
+
+print("=== STARTUP: All files loaded successfully ===")
+
+# Test Gemini API connection
+print("=== STARTUP: Testing Gemini API connection ===")
+try:
+    test_embedding = get_embedding_from_gemini("test")
+    print(f"SUCCESS: Gemini API working, embedding shape: {test_embedding.shape}")
+except Exception as e:
+    print(f"ERROR: Gemini API test failed: {e}")
+    raise
+
+print("=== STARTUP: All systems ready ===")
+
 
 # === Gemini Helper Functions ===
 def get_embedding_from_gemini(text):
@@ -111,26 +158,65 @@ def askai_short():
         return '', 200
         
     try:
+        print("=== DEBUG: Starting askai_short ===")
+        
+        # Check if request has JSON data
+        if not request.is_json:
+            print("ERROR: Request is not JSON")
+            return jsonify({'error': 'Request must be JSON'}), 400
+            
         data = request.get_json()
+        print(f"DEBUG: Received data: {data}")
+        
         if not data:
+            print("ERROR: No data provided")
             return jsonify({'error': 'No data provided'}), 400
             
         question = data.get('question', '')
         lang = data.get('lang', 'ar')
+        
+        print(f"DEBUG: Question: {question}")
+        print(f"DEBUG: Language: {lang}")
 
         if not question:
+            print("ERROR: No question provided")
             return jsonify({'error': 'No question provided'}), 400
 
         # Translate question if needed
-        translated_question = translate_text(question, "الإنجليزية", "العربية") if lang == 'en' else question
+        print("DEBUG: Starting translation...")
+        try:
+            translated_question = translate_text(question, "الإنجليزية", "العربية") if lang == 'en' else question
+            print(f"DEBUG: Translated question: {translated_question}")
+        except Exception as e:
+            print(f"ERROR in translation: {str(e)}")
+            return jsonify({'error': f'Translation failed: {str(e)}'}), 500
         
         # Get relevant articles
-        query_vec = get_embedding_from_gemini(translated_question).reshape(1, -1)
-        D, I = index.search(query_vec, 3)
-        retrieved_articles = [flat_articles[i] for i in I[0]]
+        print("DEBUG: Getting embedding...")
+        try:
+            query_vec = get_embedding_from_gemini(translated_question).reshape(1, -1)
+            print(f"DEBUG: Query vector shape: {query_vec.shape}")
+        except Exception as e:
+            print(f"ERROR in embedding: {str(e)}")
+            return jsonify({'error': f'Embedding failed: {str(e)}'}), 500
+            
+        print("DEBUG: Searching index...")
+        try:
+            D, I = index.search(query_vec, 3)
+            retrieved_articles = [flat_articles[i] for i in I[0]]
+            print(f"DEBUG: Retrieved {len(retrieved_articles)} articles")
+        except Exception as e:
+            print(f"ERROR in search: {str(e)}")
+            return jsonify({'error': f'Search failed: {str(e)}'}), 500
 
         # Generate answer
-        short_answer_ar = short_conclusion_gemini(translated_question, retrieved_articles)
+        print("DEBUG: Generating short answer...")
+        try:
+            short_answer_ar = short_conclusion_gemini(translated_question, retrieved_articles)
+            print(f"DEBUG: Generated answer: {short_answer_ar}")
+        except Exception as e:
+            print(f"ERROR in answer generation: {str(e)}")
+            return jsonify({'error': f'Answer generation failed: {str(e)}'}), 500
         
         # Prepare response
         response_data = {
@@ -140,14 +226,23 @@ def askai_short():
         
         # Translate answer if needed
         if lang == 'en':
-            response_data['short_answer_en'] = translate_text(short_answer_ar, "العربية", "الإنجليزية")
-            response_data['short_answer_ar'] = short_answer_ar
+            print("DEBUG: Translating answer to English...")
+            try:
+                response_data['short_answer_en'] = translate_text(short_answer_ar, "العربية", "الإنجليزية")
+                response_data['short_answer_ar'] = short_answer_ar
+                print(f"DEBUG: English translation: {response_data['short_answer_en']}")
+            except Exception as e:
+                print(f"ERROR in answer translation: {str(e)}")
+                return jsonify({'error': f'Answer translation failed: {str(e)}'}), 500
 
+        print("DEBUG: Returning successful response")
         return jsonify(response_data)
 
     except Exception as e:
-        print(f"Error in askai_short: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        print(f"ERROR in askai_short (unexpected): {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 @app.route('/api/askai', methods=['POST', 'OPTIONS'])
 def askai():
