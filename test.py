@@ -92,16 +92,11 @@ def short_conclusion_gemini(question, retrieved_articles):
 
 # === Flask API Setup ===
 app = Flask(__name__)
-CORS(app, resources={
-    r"/api/*": {
-        "origins": ["https://lawmate-lb.netlify.app", "http://localhost:3000"],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "supports_credentials": True,
-        "expose_headers": ["Content-Type"],
-        "max_age": 600
-    }
-})
+CORS(app, supports_credentials=True, origins=[
+    "https://lawmate-lb.netlify.app",
+    "http://localhost:3000"
+])
+
 
 # Add after_request handler to set CORS headers
 @app.after_request
