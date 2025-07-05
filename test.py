@@ -51,16 +51,7 @@ except Exception as e:
 
 print("=== STARTUP: All files loaded successfully ===")
 
-# Test Gemini API connection
-print("=== STARTUP: Testing Gemini API connection ===")
-try:
-    test_embedding = get_embedding_from_gemini("test")
-    print(f"SUCCESS: Gemini API working, embedding shape: {test_embedding.shape}")
-except Exception as e:
-    print(f"ERROR: Gemini API test failed: {e}")
-    raise
-
-print("=== STARTUP: All systems ready ===")
+# Will test API after function definitions
 
 
 # === Gemini Helper Functions ===
@@ -136,6 +127,17 @@ def short_conclusion_gemini(question, retrieved_articles):
     response = generate_gemini_response(prompt)
     print("Gemini raw response:", response)
     return response
+
+# Test Gemini API connection
+print("=== STARTUP: Testing Gemini API connection ===")
+try:
+    test_embedding = get_embedding_from_gemini("test")
+    print(f"SUCCESS: Gemini API working, embedding shape: {test_embedding.shape}")
+except Exception as e:
+    print(f"ERROR: Gemini API test failed: {e}")
+    raise
+
+print("=== STARTUP: All systems ready ===")
 
 # === Flask API Setup ===
 app = Flask(__name__)
