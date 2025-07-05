@@ -263,7 +263,11 @@ def askai_short():
 def askai():
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
-        return '', 200
+        response = jsonify({'status': 'preflight'})
+        response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        return response, 200
         
     try:
         data = request.get_json()
@@ -322,7 +326,9 @@ def askai():
             response_data['answer'] = answer_arabic
             response_data['answer_ar'] = answer_arabic
 
-        return jsonify(response_data)
+        response = jsonify(response_data)
+        response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
+        return response
 
     except Exception as e:
         print(f"Error in askai: {str(e)}")
