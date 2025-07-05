@@ -139,7 +139,7 @@ def askai_short():
         lang = data.get('lang', 'ar')
 
         if not question:
-            return _corsify_actual_response(jsonify({'error': 'No question provided'}), 400
+            return _corsify_actual_response(jsonify({'error': 'No question provided'}), 400)
 
         # Translate question if needed
         translated_question = translate_text(question, "الإنجليزية", "العربية") if lang == 'en' else question
@@ -167,7 +167,7 @@ def askai_short():
 
     except Exception as e:
         print(f"Error in askai_short: {str(e)}")
-        return _corsify_actual_response(jsonify({'error': str(e)})), 500
+        return _corsify_actual_response(jsonify({'error': str(e)})), 500)
 
 @app.route('/api/askai', methods=['POST', 'OPTIONS'])
 def askai():
