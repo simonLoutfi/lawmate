@@ -82,7 +82,7 @@ def short_conclusion_gemini(question, retrieved_articles):
 
 # === Flask API Setup ===
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "https://lawmate-lb.netlify.app"}})
+CORS(app, resources={r"/api/*": {"origins": ["https://lawmate-lb.netlify.app"]}}, supports_credentials=True)
 
 @app.route('/api/askai/short', methods=['POST'])
 def askai_short():
