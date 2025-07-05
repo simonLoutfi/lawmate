@@ -93,18 +93,23 @@ def short_conclusion_gemini(question, retrieved_articles):
 # === Flask API Setup ===
 app = Flask(__name__)
 
-# Configure CORS properly - choose ONE method
+# Configure CORS with more explicit settings
 CORS(app, 
      origins=["https://lawmate-lb.netlify.app", "http://localhost:3000"],
-     allow_headers=["Content-Type", "Authorization"],
+     allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     supports_credentials=True)
+     supports_credentials=True,
+     max_age=3600)
 
 # Remove the after_request handler to avoid duplicate headers
 # The CORS extension will handle all the headers automatically
 
 @app.route('/api/askai/short', methods=['POST', 'OPTIONS'])
 def askai_short():
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        return '', 200
+        
     try:
         data = request.get_json()
         if not data:
@@ -146,6 +151,10 @@ def askai_short():
 
 @app.route('/api/askai', methods=['POST', 'OPTIONS'])
 def askai():
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        return '', 200
+        
     try:
         data = request.get_json()
         if not data:
