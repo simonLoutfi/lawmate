@@ -58,8 +58,9 @@ print("=== STARTUP: All files loaded successfully ===")
 def get_embedding_from_gemini(text):
     """Get text embedding using Gemini's embedding model"""
     try:
-        model = genai.GenerativeModel("models/embedding-001")
-        result = model.embed_content(
+        # Use the correct embedding function from genai
+        result = genai.embed_content(
+            model="models/embedding-001",
             content=text,
             task_type="retrieval_document"
         )
