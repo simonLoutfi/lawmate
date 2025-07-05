@@ -185,11 +185,17 @@ def askai_short():
             print("ERROR: No question provided")
             return jsonify({'error': 'No question provided'}), 400
 
-        # Translate question if needed
+        # Translate question if needed (English to Arabic for processing)
         print("DEBUG: Starting translation...")
         try:
-            translated_question = translate_text(question, "الإنجليزية", "العربية") if lang == 'en' else question
-            print(f"DEBUG: Translated question: {translated_question}")
+            if lang == 'en':
+                # If question is in English, translate to Arabic for processing
+                translated_question = translate_text(question, "English", "Arabic")
+                print(f"DEBUG: Translated question (EN->AR): {translated_question}")
+            else:
+                # If question is in Arabic, use as is
+                translated_question = question
+                print(f"DEBUG: Question already in Arabic: {translated_question}")
         except Exception as e:
             print(f"ERROR in translation: {str(e)}")
             return jsonify({'error': f'Translation failed: {str(e)}'}), 500
@@ -223,20 +229,26 @@ def askai_short():
         
         # Prepare response
         response_data = {
-            'short_answer': short_answer_ar,
             'articles': retrieved_articles
         }
         
-        # Translate answer if needed
+        # Return answer in the same language as the question
         if lang == 'en':
             print("DEBUG: Translating answer to English...")
             try:
-                response_data['short_answer_en'] = translate_text(short_answer_ar, "العربية", "الإنجليزية")
+                # Translate the Arabic answer to English
+                short_answer_en = translate_text(short_answer_ar, "Arabic", "English")
+                response_data['short_answer'] = short_answer_en
+                response_data['short_answer_en'] = short_answer_en
                 response_data['short_answer_ar'] = short_answer_ar
-                print(f"DEBUG: English translation: {response_data['short_answer_en']}")
+                print(f"DEBUG: English translation: {short_answer_en}")
             except Exception as e:
                 print(f"ERROR in answer translation: {str(e)}")
                 return jsonify({'error': f'Answer translation failed: {str(e)}'}), 500
+        else:
+            # Question was in Arabic, return Arabic answer
+            response_data['short_answer'] = short_answer_ar
+            response_data['short_answer_ar'] = short_answer_ar
 
         print("DEBUG: Returning successful response")
         return jsonify(response_data)
@@ -264,8 +276,20 @@ def askai():
         if not question:
             return jsonify({'error': 'No question provided'}), 400
 
-        # Translate question if needed
-        translated_question = translate_text(question, "الإنجليزية", "العربية") if lang == 'en' else question
+        # Translate question if needed (English to Arabic for processing)
+        print("DEBUG: Starting translation...")
+        try:
+            if lang == 'en':
+                # If question is in English, translate to Arabic for processing
+                translated_question = translate_text(question, "English", "Arabic")
+                print(f"DEBUG: Translated question (EN->AR): {translated_question}")
+            else:
+                # If question is in Arabic, use as is
+                translated_question = question
+                print(f"DEBUG: Question already in Arabic: {translated_question}")
+        except Exception as e:
+            print(f"ERROR in translation: {str(e)}")
+            return jsonify({'error': f'Translation failed: {str(e)}'}), 500
         
         # Get relevant articles
         query_vec = get_embedding_from_gemini(translated_question).reshape(1, -1)
@@ -277,13 +301,25 @@ def askai():
         
         # Prepare response
         response_data = {
-            'answer': answer_arabic,
             'articles': retrieved_articles
         }
         
-        # Translate answer if needed
+        # Return answer in the same language as the question
         if lang == 'en':
-            response_data['answer_en'] = translate_text(answer_arabic, "العربية", "الإنجليزية")
+            print("DEBUG: Translating answer to English...")
+            try:
+                # Translate the Arabic answer to English
+                answer_en = translate_text(answer_arabic, "Arabic", "English")
+                response_data['answer'] = answer_en
+                response_data['answer_en'] = answer_en
+                response_data['answer_ar'] = answer_arabic
+                print(f"DEBUG: English translation: {answer_en}")
+            except Exception as e:
+                print(f"ERROR in answer translation: {str(e)}")
+                return jsonify({'error': f'Answer translation failed: {str(e)}'}), 500
+        else:
+            # Question was in Arabic, return Arabic answer
+            response_data['answer'] = answer_arabic
             response_data['answer_ar'] = answer_arabic
 
         return jsonify(response_data)
