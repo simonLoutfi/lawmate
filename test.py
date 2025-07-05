@@ -11,14 +11,14 @@ import os
 # === Setup Gemini API ===
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# === Gemini Embedding ===
 def get_embedding_from_gemini(text):
-    model = genai.EmbeddingModel(model_name="models/embedding-001")
+    model = genai.GenerativeModel(model_name="models/embedding-001")
     result = model.embed_content(
         content=text,
         task_type="retrieval_document"
     )
     return np.array(result["embedding"], dtype=np.float32)
+
 
 
 # === Load precomputed files ===
