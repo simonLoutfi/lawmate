@@ -92,21 +92,43 @@ def short_conclusion_gemini(question, retrieved_articles):
 
 # === Flask API Setup ===
 app = Flask(__name__)
-# Configure CORS with specific allowed origins and methods
 CORS(app, resources={
     r"/api/*": {
         "origins": ["https://lawmate-lb.netlify.app", "http://localhost:3000"],
-        "methods": ["POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"],
-        "supports_credentials": True
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True,
+        "expose_headers": ["Content-Type"],
+        "max_age": 600
     }
 })
 
+# Add after_request handler to set CORS headers
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
+    
+def _build_cors_preflight_response():
+    response = jsonify({'success': True})
+    response.headers.add("Access-Control-Allow-Origin", "https://lawmate-lb.netlify.app")
+    response.headers.add("Access-Control-Allow-Headers", "*")
+    response.headers.add("Access-Control-Allow-Methods", "*")
+    response.headers.add("Access-Control-Allow-Credentials", "true")
+    return response
+
+def _corsify_actual_response(response):
+    response.headers.add("Access-Control-Allow-Origin", "https://lawmate-lb.netlify.app")
+    response.headers.add("Access-Control-Allow-Credentials", "true")
+    return response
+
 @app.route('/api/askai/short', methods=['POST', 'OPTIONS'])
 def askai_short():
-    """Endpoint for short legal answers"""
     if request.method == 'OPTIONS':
-        return jsonify({'status': 'ok'}), 200
+        return _build_cors_preflight_response()
         
     try:
         data = request.get_json()
@@ -117,7 +139,7 @@ def askai_short():
         lang = data.get('lang', 'ar')
 
         if not question:
-            return jsonify({'error': 'No question provided'}), 400
+            return _corsify_actual_response(jsonify({'error': 'No question provided'}), 400
 
         # Translate question if needed
         translated_question = translate_text(question, "الإنجليزية", "العربية") if lang == 'en' else question
@@ -141,17 +163,16 @@ def askai_short():
             response_data['short_answer_en'] = translate_text(short_answer_ar, "العربية", "الإنجليزية")
             response_data['short_answer_ar'] = short_answer_ar
 
-        return jsonify(response_data)
+        return _corsify_actual_response(jsonify(response_data))
 
     except Exception as e:
         print(f"Error in askai_short: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return _corsify_actual_response(jsonify({'error': str(e)})), 500
 
 @app.route('/api/askai', methods=['POST', 'OPTIONS'])
 def askai():
-    """Endpoint for detailed legal answers"""
     if request.method == 'OPTIONS':
-        return jsonify({'status': 'ok'}), 200
+        return _build_cors_preflight_response()
         
     try:
         data = request.get_json()
@@ -162,7 +183,8 @@ def askai():
         lang = data.get('lang', 'ar')
 
         if not question:
-            return jsonify({'error': 'No question provided'}), 400
+            return _corsify_actual_response(jsonify({'error': 'No question provided'})), 400
+
 
         # Translate question if needed
         translated_question = translate_text(question, "الإنجليزية", "العربية") if lang == 'en' else question
@@ -186,11 +208,12 @@ def askai():
             response_data['answer_en'] = translate_text(answer_arabic, "العربية", "الإنجليزية")
             response_data['answer_ar'] = answer_arabic
 
-        return jsonify(response_data)
+
+        return _corsify_actual_response(jsonify(response_data))
 
     except Exception as e:
         print(f"Error in askai: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return _corsify_actual_response(jsonify({'error': str(e)})), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)), debug=False)
