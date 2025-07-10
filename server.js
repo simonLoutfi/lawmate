@@ -475,6 +475,40 @@ app.post('/api/subscription', authenticateToken, async (req, res) => {
 });
 
 // Document CRUD operations
+// Get a single document by ID
+app.get('/api/documents/:id', authenticateToken, async (req, res) => {
+  let connection;
+  try {
+    const documentId = req.params.id;
+    const userId = req.user.userId;
+
+    connection = await getConnection();
+
+    // Get the document
+    const [documents] = await connection.query(
+      `SELECT d.*, GROUP_CONCAT(dt.tag) AS tagList
+       FROM documents d
+       LEFT JOIN document_tags dt ON d.id = dt.documentId
+       WHERE d.id = ? AND d.userId = ?
+       GROUP BY d.id`,
+      [documentId, userId]
+    );
+
+    if (documents.length === 0) {
+      return res.status(404).json({ message: 'Document not found or unauthorized' });
+    }
+
+    const document = documents[0];
+    document.tags = document.tagList ? document.tagList.split(',') : [];
+
+    res.json(document);
+  } catch (error) {
+    console.error('Error fetching document by ID:', error);
+    res.status(500).json({ message: 'Error fetching document', error: error.message });
+  } finally {
+    if (connection) connection.release();
+  }
+});
 
 // Create document
 app.post('/api/documents', authenticateToken, async (req, res) => {

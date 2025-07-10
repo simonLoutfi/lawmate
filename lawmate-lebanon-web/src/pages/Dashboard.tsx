@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { ArrowRight, FileText, MessageCircle, Upload, Users, Home, Settings, LogOut, ChevronDown, Users2, Scale, Search, Edit, Download, Loader2 } from 'lucide-react';
+import { ArrowRight, FileText, MessageCircle, Upload, Users, Home, Settings, LogOut, ChevronDown, Users2, Scale, Search, Edit, Download, Loader2, Eye } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
@@ -120,23 +120,20 @@ const Dashboard = () => {
   const quickActions = [
     {
       title: language === 'ar' ? 'الوثائق' : 'Documents',
-      description: language === 'ar' ? 'إنشاء ومراجعة الوثائق القانونية' : 'Create and review legal documents',
+      description: language === 'ar' ? 'إنشاء ومراجعة الوثائق القانونية' : 'Create  legal documents',
       icon: FileText,
       color: 'bg-blue-500',
       actions: [
-        { label: language === 'ar' ? 'إنشاء' : 'Create', route: '/services/document' },
-        { label: language === 'ar' ? 'مراجعة' : 'Review', route: '/services/contract' },
-        { label: language === 'ar' ? 'دليل عام' : 'General Guide', route: '/services/general-guide' }
+        { label: language === 'ar' ? 'إنشاء' : 'Create', route: '/services/document' }
       ]
     },
     {
       title: language === 'ar' ? 'العقود' : 'Contracts',
-      description: language === 'ar' ? 'إنشاء ومراجعة العقود المهنية' : 'Create and review professional contracts',
+      description: language === 'ar' ? 'إنشاء ومراجعة العقود المهنية' : 'Create professional contracts',
       icon: Scale,
       color: 'bg-green-500',
       actions: [
-        { label: language === 'ar' ? 'إنشاء' : 'Create', route: '/services/document' },
-        { label: language === 'ar' ? 'مراجعة' : 'Review', route: '/services/contract' }
+        { label: language === 'ar' ? 'إنشاء' : 'Create', route: '/services/document' }
       ]
     }
   ];
@@ -355,13 +352,7 @@ const Dashboard = () => {
                             <FileText className="h-4 w-4 text-[#26A69A]" />
                             <div>
                               <p className="font-semibold text-[#1F2A44] text-sm">{doc.title}</p>
-                              <p className="text-xs text-gray-600">
-                                {new Date(doc.updatedAt).toLocaleDateString(language === 'ar' ? 'ar-LB' : 'en-US', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric'
-                                })}
-                              </p>
+
                             </div>
                           </div>
                           <span className={`px-2 py-1 rounded-full text-xs ${
@@ -378,7 +369,7 @@ const Dashboard = () => {
                             variant="outline"
                             onClick={() => handleEditDocument(doc.id)}
                           >
-                            <Edit className="h-3 w-3" />
+                            <Eye className="h-3 w-3" />
                           </Button>
                           <Button 
                             size="sm" 
@@ -714,13 +705,7 @@ const Dashboard = () => {
                           <FileText className="h-5 w-5 text-[#26A69A]" />
                           <div>
                             <p className="font-semibold text-[#1F2A44]">{doc.title}</p>
-                            <p className="text-sm text-gray-600">
-                              {new Date(doc.updatedAt).toLocaleDateString(language === 'ar' ? 'ar-LB' : 'en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
-                            </p>
+
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -736,8 +721,8 @@ const Dashboard = () => {
                             variant="outline"
                             onClick={() => handleEditDocument(doc.id)}
                           >
-                            <Edit className="h-4 w-4 mr-1" />
-                            {language === 'ar' ? 'تعديل' : 'Edit'}
+                            <Eye className="h-4 w-4 mr-1" />
+                            {language === 'ar' ? 'قراءة' : 'View'}
                           </Button>
                           <Button 
                             size="sm" 

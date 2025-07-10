@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { FileText, Edit, Download, Eye, ArrowLeft } from 'lucide-react';
+import { FileText, Download, Eye, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { documentsAPI } from '@/services/api'; 
 import { useMediaQuery } from 'react-responsive';
+import { useNavigate } from 'react-router-dom';
 
 
 const Documents = () => {
@@ -39,33 +40,53 @@ const Documents = () => {
     // eslint-disable-next-line
   }, [language]);
 
-  const handleEdit = (docName: string) => {
-    toast({
-      title: language === 'ar' ? 'تحرير الوثيقة' : 'Edit Document',
-      description: `${language === 'ar' ? 'فتح محرر' : 'Opening editor for'} ${docName}`,
-    });
-  };
 
-  const handleDownload = (doc: any) => {
-    const element = document.createElement('a');
-    const file = new Blob([doc.content], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = `${doc.title || 'document'}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-
+  const handleDownload = async (docId: number, docTitle: string) => {
+  try {
+    const response = await documentsAPI.getDocument(docId);
+    
+    // Check if response has the expected structure
+    if (!response?.data?.content) {
+      throw new Error('Invalid response structure');
+    }
+    
+    const content = response.data.content;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    
+    // Create and trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${docTitle}.txt`;
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    
+    // Cleanup
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
     toast({
       title: language === 'ar' ? 'تحميل الوثيقة' : 'Download Document',
-      description: `${language === 'ar' ? 'تم تحميل' : 'Downloaded'} ${doc.title}`,
+      description: `${language === 'ar' ? 'تم تحميل' : 'Downloaded'} ${docTitle}`,
     });
-  };
-
-  const handleReview = (docName: string) => {
+  } catch (error) {
+    console.error('Download error:', error);
     toast({
-      title: language === 'ar' ? 'مراجعة الوثيقة' : 'Review Document',
-      description: `${language === 'ar' ? 'فتح مراجع' : 'Opening reviewer for'} ${docName}`,
+      title: language === 'ar' ? 'خطأ' : 'Error',
+      description: language === 'ar'
+        ? 'حدث خطأ أثناء تحميل الوثيقة'
+        : 'An error occurred while downloading the document',
+      variant: 'destructive',
     });
+  }
+};
+  const navigate = useNavigate();
+
+  const handleReview = (docId: number) => {
+        navigate(`/documents/${docId}`);
+
   };
 
   const getStatusColor = (doc: any) => {
@@ -132,20 +153,15 @@ const Documents = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handleReview(doc.title)}
+                  onClick={() => handleReview(doc.id)}
                   className="flex-1 text-xs"
                 >
                   <Eye className="h-3 w-3 mr-1" />
                 </Button>
-                <Link to={`/documents/${doc.id}`} className="flex-1">
-                  <Button size="sm" variant="outline" className="w-full text-xs">
-                    <Edit className="h-3 w-3 mr-1" />
-                  </Button>
-                </Link>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handleDownload(doc)}
+                  onClick={() => handleDownload(doc.id, doc.title)}
                   className="flex-1 text-xs"
                 >
                   <Download className="h-3 w-3 mr-1" />
@@ -255,28 +271,17 @@ const Documents = () => {
                     <Button 
                       size="sm" 
                       variant="outline"
-                      onClick={() => handleReview(doc.title)}
+                      onClick={() => handleReview(doc.id)}
                       className="flex-1 min-w-0"
                     >
                       <Eye className="h-3 w-3 mr-1" />
                       <span className="text-xs">{language === 'ar' ? 'مراجعة' : 'Review'}</span>
                     </Button>
                     
-                    <Link to={`/documents/${doc.id}`} className="flex-1 min-w-0">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="w-full"
-                      >
-                        <Edit className="h-3 w-3 mr-1" />
-                        <span className="text-xs">{language === 'ar' ? 'تحرير' : 'Edit'}</span>
-                      </Button>
-                    </Link>
-                    
                     <Button 
                       size="sm" 
                       variant="outline"
-                      onClick={() => handleDownload(doc)}
+                      onClick={() => handleDownload(doc.id, doc.title)}
                       className="flex-1 min-w-0"
                     >
                       <Download className="h-3 w-3 mr-1" />

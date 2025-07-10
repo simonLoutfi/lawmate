@@ -19,23 +19,17 @@ const Navigation = () => {
 
   const services = [
     {
-      title: language === 'ar' ? 'مراجعة العقود' : 'Contract Review',
-      href: '/services/contract',
-      description: language === 'ar' ? 'مراجعة وتحليل العقود بالذكاء الاصطناعي' : 'AI-powered contract review and analysis',
-      icon: FileText
-    },
-    {
       title: language === 'ar' ? 'صياغة الوثائق' : 'Document Drafting',
       href: '/services/document',
       description: language === 'ar' ? 'صياغة الوثائق القانونية المخصصة' : 'Custom legal document drafting',
       icon: Scale
-    },
-    {
-      title: language === 'ar' ? 'الدليل العام' : 'General Guide',
-      href: '/services/general-guide',
-      description: language === 'ar' ? 'دليل شامل للقوانين اللبنانية' : 'Comprehensive guide to Lebanese law',
-      icon: FileText
     }
+    // {
+    //   title: language === 'ar' ? 'الدليل العام' : 'General Guide',
+    //   href: '/services/general-guide',
+    //   description: language === 'ar' ? 'دليل شامل للقوانين اللبنانية' : 'Comprehensive guide to Lebanese law',
+    //   icon: FileText
+    // }
   ];
 
   return (
@@ -68,7 +62,7 @@ const Navigation = () => {
                         <NavigationMenuLink asChild>
                           <Link
                             className="flex h-full w-full select-none flex-col justify-end rounded-xl bg-gradient-to-br from-[#26A69A]/10 to-[#26A69A]/20 p-6 no-underline outline-none focus:shadow-md focus:ring-2 focus:ring-[#26A69A] hover:bg-gradient-to-br hover:from-[#26A69A]/15 hover:to-[#26A69A]/25 transition-all"
-                            to="/services"
+                            to="/dashboard"
                           >
                             <Scale className="h-8 w-8 text-[#26A69A] mb-2" />
                             <div className="mb-2 mt-4 text-lg font-semibold text-[#1F2A44]">
