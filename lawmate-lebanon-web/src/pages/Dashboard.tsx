@@ -241,306 +241,246 @@ const Dashboard = () => {
   if (isMobile) {
     return (
       <div className="min-h-screen bg-gray-50 pb-16" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-        {/* Mobile Header */}
-        <div className="bg-white shadow-sm border-b p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#1F2A44] rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">LM</span>
-              </div>
-              <span className="text-lg font-semibold text-[#1F2A44]">LawMate</span>
-            </div>
-<div className="flex items-center gap-2">
-  {/* Network Tab Button */}
-  <Button 
-    variant="ghost" 
-    size="sm" 
-    onClick={() => {
-  if (activeTab === 'network') {
-    setActiveTab(previousTab); // go back
-  } else {
-    setPreviousTab(activeTab); // store current
-    setActiveTab('network');   // go to network
-  }
-}}
+  {/* App Header */}
+  <header className="sticky top-0 z-10 bg-white border-b p-3">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <div className="w-7 h-7 bg-[#1F2A44] rounded-md flex items-center justify-center">
+          <span className="text-white font-bold text-xs">LM</span>
+        </div>
+        <span className="text-base font-semibold text-[#1F2A44]">LawMate</span>
+      </div>
+      
+      <div className="flex items-center gap-1">
+        <button 
+          onClick={() => setActiveTab(activeTab === 'network' ? previousTab : 'network')}
+          className={`p-2 rounded-full ${activeTab === 'network' ? 'bg-[#26A69A]/10 text-[#26A69A]' : 'text-gray-600'}`}
+        >
+          <Users className="h-4 w-4" />
+        </button>
+        
+        <button 
+          onClick={handleLogout}
+          className="p-2 rounded-full text-red-600 hover:bg-red-50"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  </header>
 
-    className={`${activeTab === 'network' ? 'text-[#26A69A]' : 'text-gray-600'} hover:bg-gray-100`}
-  >
-    <Users className="h-4 w-4" />
-  </Button>
+  {/* App Content */}
+  <main className="p-3">
+    {/* Floating Action Button */}
+    <button
+      onClick={handleAskLegalQuestion}
+      className="fixed bottom-20 right-4 z-20 bg-[#26A69A] text-white p-3 rounded-full shadow-lg"
+    >
+      <Search className="h-5 w-5" />
+    </button>
 
-  {/* Logout Button */}
-  <Button 
-    variant="ghost" 
-    size="sm" 
-    onClick={handleLogout}
-    className="text-red-600 hover:bg-red-50"
-  >
-    <LogOut className="h-4 w-4" />
-  </Button>
-</div>
-
-          </div>
+    {activeTab === 'home' && (
+      <div className="space-y-4">
+        {/* Welcome Header */}
+        <div className="pt-1">
+          <h1 className="text-xl font-bold text-[#1F2A44]">
+            {language === 'ar' ? `مرحباً ${user?.firstName} 👋` : `Hi ${user?.firstName} 👋`}
+          </h1>
+          <p className="text-gray-600 text-xs mt-1">
+            {language === 'ar' ? 'ماذا تريد أن تفعل اليوم؟' : 'What would you like to do today?'}
+          </p>
         </div>
 
-        {/* Mobile Main Content */}
-        <div className="p-4">
-          {/* Ask Legal Question Button */}
-          <Button
-            onClick={handleAskLegalQuestion}
-            className="w-full bg-[#26A69A] hover:bg-[#26A69A]/90 text-white mb-6 py-3"
-          >
-            <Search className="h-5 w-5 mr-2" />
-            {language === 'ar' ? 'اسأل سؤالاً قانونياً' : 'Ask a Legal Question'}
-          </Button>
-
-          {activeTab === 'home' && (
-            <div className="space-y-6">
-              {/* Welcome Section */}
-              <div>
-                <h1 className="text-2xl font-bold text-[#1F2A44] mb-2">
-                  {language === 'ar'
-                    ? `مرحباً بك، ${user ? user.firstName : ''}! 👋`
-                    : `Welcome back, ${user ? user.firstName : ''}! 👋`}
-                </h1>
-                <p className="text-gray-600 text-sm">
-                  {language === 'ar' ? 'جاهز لإنشاء العقود أو الحصول على استشارة قانونية؟' : 'Ready to generate contracts or get legal advice?'}
-                </p>
+        {/* Quick Actions Grid */}
+        <div className="grid grid-cols-2 gap-2">
+          {quickActions.map((action, index) => (
+            <Link 
+              key={index} 
+              to={action.actions[0].route}
+              className="p-3 bg-white rounded-lg border border-gray-100"
+            >
+              <div className={`w-8 h-8 ${action.color} rounded-md flex items-center justify-center mb-2`}>
+                <action.icon className="h-4 w-4 text-white" />
               </div>
+              <h3 className="text-sm font-semibold text-[#1F2A44]">{action.title}</h3>
+              <p className="text-gray-500 text-xs mt-1 line-clamp-2">{action.description}</p>
+            </Link>
+          ))}
+        </div>
 
-              {/* Quick Actions */}
-              <div className="space-y-4">
-                {quickActions.map((action, index) => (
-                  <Card key={index} className="hover:shadow-md">
-                    <CardHeader className="pb-3">
-                      <div className={`w-10 h-10 ${action.color} rounded-lg flex items-center justify-center mb-2`}>
-                        <action.icon className="h-5 w-5 text-white" />
-                      </div>
-                      <CardTitle className="text-[#1F2A44] text-base">{action.title}</CardTitle>
-                      <p className="text-gray-600 text-sm">
-                        {action.description}
-                      </p>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="flex flex-wrap gap-2">
-                        {action.actions.map((actionBtn, btnIndex) => (
-                          <Link key={btnIndex} to={actionBtn.route}>
-                            <Button className="bg-[#26A69A] hover:bg-[#26A69A]/90 text-xs px-3 py-1 h-8">
-                              {actionBtn.label}
-                            </Button>
-                          </Link>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              {/* Recent Activity */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-[#1F2A44] text-lg">
-                    {language === 'ar' ? 'النشاط الأخير' : 'Recent Activity'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {filteredDocuments.slice(0, RECENT_DOCUMENTS_LIMIT).map((doc) => (
-                      <div key={doc.id} className="p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-[#26A69A]" />
-                            <div>
-                              <p className="font-semibold text-[#1F2A44] text-sm">{doc.title}</p>
-
-                            </div>
-                          </div>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            doc.status === 'generated' || doc.status === 'signed'
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {getStatusText(doc.status || 'generated')}
-                          </span>
-                        </div>
-                        <div className="flex justify-end gap-2 mt-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleEditDocument(doc.id)}
-                          >
-                            <Eye className="h-3 w-3" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleDownloadDocument(doc.id, doc.title)}
-                          >
-                            <Download className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+        {/* Recent Activity List */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-[#1F2A44]">
+              {language === 'ar' ? 'النشاط الأخير' : 'Recent Activity'}
+            </h2>
+            <Link to="/documents" className="text-xs text-[#26A69A]">
+              {language === 'ar' ? 'عرض الكل' : 'View All'}
+            </Link>
+          </div>
+          
+          <div className="space-y-2">
+            {filteredDocuments.slice(0, 3).map((doc) => (
+              <div key={doc.id} className="p-3 bg-white rounded-lg border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-[#26A69A]" />
+                    <span className="text-sm font-medium">{doc.title}</span>
                   </div>
-                  <Link to="/documents">
-                    <Button variant="ghost" className="w-full mt-3 text-[#26A69A] hover:text-[#26A69A]/80 text-sm">
-                      {language === 'ar' ? 'عرض جميع الوثائق' : 'View All Documents'}
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {activeTab === 'documents' && (
-            <div className="space-y-4">
-              <h1 className="text-2xl font-bold text-[#1F2A44]">
-                {language === 'ar' ? 'وثائقي' : 'My Documents'}
-              </h1>
-              
-              <div className="space-y-3">
-                {filteredDocuments.map((doc) => (
-                  <Card key={doc.id} className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="text-xl">📄</div>
-                        <div>
-                          <p className="font-semibold text-[#1F2A44] text-sm">{doc.title}</p>
-                          <p className="text-xs text-gray-600">
-                            {language === 'ar' ? 'تم إنشاؤه في' : 'Created on'} {formatDate(doc.createdAt)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleDownloadDocument(doc.id, doc.title)}
-                        >
-                          <Download className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleEditDocument(doc.id)}
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <div className="space-y-4">
-              <h1 className="text-2xl font-bold text-[#1F2A44]">
-                {language === 'ar' ? 'الإعدادات' : 'Settings'}
-              </h1>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-[#1F2A44] text-lg">
-                    {language === 'ar' ? 'معلومات الملف الشخصي' : 'Profile Information'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      {language === 'ar' ? 'الاسم الأول' : 'First Name'}
-                    </label>
-                    <Input
-                      name="firstName"
-                      value={profileForm.firstName}
-                      onChange={handleProfileChange}
-                      className="text-sm h-9"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      {language === 'ar' ? 'اسم العائلة' : 'Last Name'}
-                    </label>
-                    <Input
-                      name="lastName"
-                      value={profileForm.lastName}
-                      onChange={handleProfileChange}
-                      className="text-sm h-9"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      {language === 'ar' ? 'البريد الإلكتروني' : 'Email'}
-                    </label>
-                    <Input
-                      name="email"
-                      value={profileForm.email}
-                      disabled
-                      className="text-sm h-9"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      {language === 'ar' ? 'اسم الشركة' : 'Business Name'}
-                    </label>
-                    <Input
-                      name="businessName"
-                      value={profileForm.businessName}
-                      onChange={handleProfileChange}
-                      className="text-sm h-9"
-                    />
-                  </div>
-                  <Button
-                    className="w-full bg-[#26A69A] hover:bg-[#26A69A]/90 mt-2"
-                    onClick={handleProfileSave}
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    doc.status === 'generated' || doc.status === 'signed'
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {getStatusText(doc.status || 'generated')}
+                  </span>
+                </div>
+                <div className="flex justify-end gap-1 mt-2">
+                  <button 
+                    onClick={() => handleEditDocument(doc.id)}
+                    className="p-1 text-gray-500 hover:text-[#26A69A]"
                   >
-                    {language === 'ar' ? 'حفظ التغييرات' : 'Save Changes'}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
-
-        {activeTab === 'network' && (
-  <div className="space-y-4">
-    <h1 className="text-2xl font-bold text-[#1F2A44]">
-      {language === 'ar' ? 'الشبكة' : 'Network'}
-    </h1>
-    
-    {networkItems.map((item) => (
-      <Link key={item.id} to={item.route}>
-        <Card className="p-4 hover:bg-gray-50">
-          <div className="flex items-center gap-3">
-            <item.icon className="h-5 w-5 text-[#26A69A]" />
-            <span className="text-sm font-medium text-[#1F2A44]">{item.label}</span>
-          </div>
-        </Card>
-      </Link>
-    ))}
-  </div>
-)}
-
-
-        {/* Mobile Bottom Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
-          <div className="flex justify-around">
-            {sidebarItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex flex-col items-center justify-center py-3 px-4 w-full ${
-                  activeTab === item.id ? 'text-[#26A69A]' : 'text-gray-600'
-                }`}
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="text-xs mt-1">{item.label}</span>
-              </button>
+                    <Eye className="h-3 w-3" />
+                  </button>
+                  <button 
+                    onClick={() => handleDownloadDocument(doc.id, doc.title)}
+                    className="p-1 text-gray-500 hover:text-[#26A69A]"
+                  >
+                    <Download className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </div>
+    )}
+
+    {activeTab === 'documents' && (
+      <div className="space-y-3">
+        <h1 className="text-xl font-bold text-[#1F2A44]">
+          {language === 'ar' ? 'وثائقي' : 'My Documents'}
+        </h1>
+        
+        <div className="space-y-2">
+          {filteredDocuments.map((doc) => (
+            <div key={doc.id} className="p-3 bg-white rounded-lg border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-4 w-4 text-[#26A69A]" />
+                  <div>
+                    <p className="text-sm font-medium">{doc.title}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatDate(doc.createdAt)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  <button 
+                    onClick={() => handleDownloadDocument(doc.id, doc.title)}
+                    className="p-1 text-gray-500 hover:text-[#26A69A]"
+                  >
+                    <Download className="h-3 w-3" />
+                  </button>
+                  <button 
+                    onClick={() => handleEditDocument(doc.id)}
+                    className="p-1 text-gray-500 hover:text-[#26A69A]"
+                  >
+                    <Edit className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {activeTab === 'settings' && (
+      <div className="space-y-4">
+        <h1 className="text-xl font-bold text-[#1F2A44]">
+          {language === 'ar' ? 'الإعدادات' : 'Settings'}
+        </h1>
+        
+        <div className="bg-white rounded-lg border border-gray-100 p-3">
+          <h2 className="text-sm font-semibold text-[#1F2A44] mb-3">
+            {language === 'ar' ? 'معلومات الملف الشخصي' : 'Profile Information'}
+          </h2>
+          
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">
+                {language === 'ar' ? 'الاسم' : 'Name'}
+              </label>
+              <input
+                name="firstName"
+                value={profileForm.firstName}
+                onChange={handleProfileChange}
+                className="w-full p-2 text-sm border border-gray-200 rounded-md"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">
+                {language === 'ar' ? 'البريد الإلكتروني' : 'Email'}
+              </label>
+              <input
+                name="email"
+                value={profileForm.email}
+                disabled
+                className="w-full p-2 text-sm border border-gray-200 rounded-md bg-gray-50"
+              />
+            </div>
+            
+            <button
+              className="w-full bg-[#26A69A] text-white py-2 rounded-md text-sm font-medium mt-2"
+              onClick={handleProfileSave}
+            >
+              {language === 'ar' ? 'حفظ' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {activeTab === 'network' && (
+      <div className="space-y-2">
+        <h1 className="text-xl font-bold text-[#1F2A44]">
+          {language === 'ar' ? 'الشبكة' : 'Network'}
+        </h1>
+        
+        {networkItems.map((item) => (
+          <Link 
+            key={item.id} 
+            to={item.route}
+            className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-100"
+          >
+            <item.icon className="h-5 w-5 text-[#26A69A]" />
+            <span className="text-sm">{item.label}</span>
+          </Link>
+        ))}
+      </div>
+    )}
+  </main>
+
+  {/* App Bottom Navigation */}
+  <nav className="fixed bottom-0 left-0 right-0 bg-white border-t">
+    <div className="flex">
+      {sidebarItems.map((item) => (
+        <button
+          key={item.id}
+          onClick={() => setActiveTab(item.id)}
+          className={`flex-1 flex flex-col items-center justify-center py-2 ${
+            activeTab === item.id ? 'text-[#26A69A]' : 'text-gray-600'
+          }`}
+        >
+          <item.icon className="h-5 w-5" />
+          <span className="text-xs mt-1">{item.label}</span>
+        </button>
+      ))}
+    </div>
+  </nav>
+</div>
     );
   }
 

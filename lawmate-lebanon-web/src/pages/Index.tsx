@@ -51,142 +51,137 @@ const Index = () => {
     return (
       <div className="bg-white min-h-screen" dir={language === 'ar' ? 'rtl' : 'ltr'}>
         {/* Mobile Hero Section */}
-        <section className="px-4 py-12 bg-gradient-to-br from-white via-gray-50/50 to-[#26A69A]/5">
-          <div className="max-w-md mx-auto">
-            <h1 className="font-bold text-2xl text-[#1F2A44] mb-6 text-center">
-              {t('hero.title')}
-            </h1>
-            
-            <p className="text-lg text-gray-600 mb-8 text-center">
-              {t('hero.subtitle')}
-            </p>
+  <div className="pb-16">
+  {/* Hero Section - App-like Header */}
+  <section className="px-4 pt-6 pb-8 bg-gradient-to-br from-white via-gray-50/50 to-[#26A69A]/5">
+    <div className="mx-auto">
+      <h1 className="font-bold text-xl text-[#1F2A44] mb-3 text-center">
+        {t('hero.title')}
+      </h1>
+      
+      <p className="text-sm text-gray-600 mb-5 text-center px-2">
+        {t('hero.subtitle')}
+      </p>
 
-            <div className="flex flex-col gap-4 mb-8">
-              {features.map((feature, index) => (
-                <div key={index} className="flex items-center bg-green-50 text-green-700 px-4 py-2 rounded-full text-sm font-medium border border-green-100">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  <span>{feature}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex flex-col gap-4 mb-8">
-              <Link to="/signup">
-                <Button size="lg" className="btn-primary w-full py-4 rounded-lg font-semibold">
-                  {t('hero.startFree')}
-                  <ArrowRight className={`h-5 w-5 ${language === 'ar' ? 'mr-2 rotate-180' : 'ml-2'}`} />
-                </Button>
-              </Link>
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="btn-secondary w-full py-4 rounded-lg font-semibold"
-                onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-              >
-                {t('hero.howItWorks')}
-              </Button>
-            </div>
-
-            <div className="flex flex-col items-center gap-4 text-gray-500 text-sm font-medium">
-              <div className="flex items-center">
-                <div className="flex text-yellow-400 mr-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-current" />
-                  ))}
-                </div>
-                <span>{language === 'ar' ? '٤.٩ من ٥ نجوم' : '4.9/5 stars'}</span>
-              </div>
-              <span>{language === 'ar' ? 'أكثر من ١٠٠٠ مستخدم' : '1000+ users'}</span>
-            </div>
+      {/* App-like feature chips */}
+      <div className="flex flex-wrap justify-center gap-2 mb-5 px-2">
+        {features.map((feature, index) => (
+          <div key={index} className="flex items-center bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            <span>{feature}</span>
           </div>
-        </section>
+        ))}
+      </div>
 
-        {/* Mobile Services */}
-        <section className="px-4 py-12 bg-gray-50">
-          <div className="max-w-md mx-auto">
-            <h2 className="font-bold text-xl text-[#1F2A44] mb-6 text-center">
-              {language === 'ar' ? 'كل ما تحتاجه قانونياً' : 'Everything you need legally'}
-            </h2>
-            
-            <div className="space-y-4">
-              {services.map((service, index) => (
-                <Link key={index} to={service.route}>
-                  <Card className="p-6 h-full border-0 shadow-md bg-white rounded-xl">
-                    <CardContent className="pt-0">
-                      <div className={`w-12 h-12 ${service.color} rounded-xl flex items-center justify-center mb-4`}>
-                        <service.icon className="h-6 w-6 text-white" />
-                      </div>
-                      <h3 className="text-lg font-bold text-[#1F2A44] mb-2">{service.title}</h3>
-                      <p className="text-gray-600 text-sm mb-4">{service.description}</p>
-                      <div className="flex items-center text-[#26A69A] font-medium text-sm">
-                        <span>{language === 'ar' ? 'ابدأ الآن' : 'Get started'}</span>
-                        <ArrowRight className={`h-4 w-4 ${language === 'ar' ? 'mr-2 rotate-180' : 'ml-2'}`} />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
+      {/* App-like buttons */}
+      <div className="flex flex-col gap-2 mb-5 px-2">
+        <Link to="/signup">
+          <button className="w-full bg-[#26A69A] text-white py-3 rounded-lg font-semibold text-sm flex items-center justify-center">
+            {t('hero.startFree')}
+            <ArrowRight className={`h-4 w-4 ${language === 'ar' ? 'mr-2 rotate-180' : 'ml-2'}`} />
+          </button>
+        </Link>
+        <button 
+          className="w-full border border-gray-300 py-3 rounded-lg font-semibold text-sm"
+          onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+        >
+          {t('hero.howItWorks')}
+        </button>
+      </div>
 
-        {/* Mobile How It Works */}
-        <section id="how-it-works" className="px-4 py-12 bg-white">
-          <div className="max-w-md mx-auto">
-            <h2 className="font-bold text-xl text-[#1F2A44] mb-6 text-center">
-              {language === 'ar' ? 'بساطة في ٣ خطوات' : 'Simple in 3 steps'}
-            </h2>
-            
-            <div className="space-y-8">
-              {[
-                {
-                  step: '1',
-                  title: language === 'ar' ? 'اطرح سؤالك' : 'Ask your question',
-                  description: language === 'ar' ? 'اوصف مشكلتك القانونية بكلمات بسيطة' : 'Describe your legal issue in simple words'
-                },
-                {
-                  step: '2', 
-                  title: language === 'ar' ? 'دع الذكاء الاصطناعي يعمل' : 'Let AI work',
-                  description: language === 'ar' ? 'نحلل طلبك ونولد الحل المناسب' : 'We analyze your request and generate the right solution'
-                },
-                {
-                  step: '3',
-                  title: language === 'ar' ? 'احصل على النتيجة' : 'Get your result', 
-                  description: language === 'ar' ? 'حمل وثيقتك أو تواصل مع محامي' : 'Download your document or connect with a lawyer'
-                }
-              ].map((item, index) => (
-                <div key={index} className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-[#26A69A] to-[#26A69A]/80 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl font-bold text-white">{item.step}</span>
-                  </div>
-                  <h3 className="text-lg font-bold text-[#1F2A44] mb-2">{item.title}</h3>
-                  <p className="text-gray-600 text-sm">{item.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+      {/* App-like rating */}
+      <div className="flex flex-col items-center gap-1 text-gray-500 text-xs">
+        <div className="flex items-center">
+          {[...Array(5)].map((_, i) => (
+            <Star key={i} className="h-3 w-3 text-yellow-400 fill-current" />
+          ))}
+          <span className="ml-1">{language === 'ar' ? '٤.٩' : '4.9'}</span>
+        </div>
+        <span>{language === 'ar' ? '١٠٠٠+ مستخدم' : '1000+ users'}</span>
+      </div>
+    </div>
+  </section>
 
-        {/* Mobile Final CTA */}
-        <section className="px-4 py-12 bg-gradient-to-br from-[#1F2A44] to-[#1F2A44]/90 text-white">
-          <div className="max-w-md mx-auto text-center">
-            <h2 className="font-bold text-xl mb-6">
-              {language === 'ar' ? 'ابدأ رحلتك القانونية اليوم' : 'Start your legal journey today'}
-            </h2>
-            <p className="text-gray-200 mb-8">
-              {language === 'ar' ? 
-                'انضم لمئات رواد الأعمال اللبنانيين الذين يثقون بـ LawMate' :
-                'Join hundreds of Lebanese entrepreneurs who trust LawMate'
-              }
-            </p>
-            <Link to="/signup">
-              <Button size="lg" className="bg-[#26A69A] text-white hover:bg-[#26A69A]/90 w-full py-4 rounded-lg font-bold">
-                {language === 'ar' ? 'ابدأ مجاناً الآن' : 'Start free now'}
-                <ArrowRight className={`h-5 w-5 ${language === 'ar' ? 'mr-2 rotate-180' : 'ml-2'}`} />
-              </Button>
-            </Link>
+  {/* Services - App-like Card Grid */}
+  <section className="px-3 py-5 bg-white">
+    <h2 className="font-bold text-lg text-[#1F2A44] mb-4 px-2">
+      {language === 'ar' ? 'الخدمات القانونية' : 'Legal Services'}
+    </h2>
+    
+    <div className="grid grid-cols-2 gap-2">
+      {services.map((service, index) => (
+        <Link 
+          key={index} 
+          to={service.route}
+          className="p-3 bg-white rounded-lg border border-gray-100 shadow-xs"
+        >
+          <div className={`w-8 h-8 ${service.color} rounded-lg flex items-center justify-center mb-2`}>
+            <service.icon className="h-4 w-4 text-white" />
           </div>
-        </section>
+          <h3 className="font-semibold text-[#1F2A44] text-sm mb-1">{service.title}</h3>
+          <p className="text-gray-500 text-xs line-clamp-2">{service.description}</p>
+        </Link>
+      ))}
+    </div>
+  </section>
+
+  {/* How It Works - App-like Steps */}
+  <section id="how-it-works" className="px-4 py-6 bg-gray-50">
+    <h2 className="font-bold text-lg text-[#1F2A44] mb-5 text-center">
+      {language === 'ar' ? 'كيف يعمل' : 'How It Works'}
+    </h2>
+    
+    <div className="space-y-4">
+      {[
+        {
+          step: '1',
+          title: language === 'ar' ? 'اطرح سؤالك' : 'Ask your question',
+          description: language === 'ar' ? 'صف مشكلتك بكلمات بسيطة' : 'Describe your issue simply'
+        },
+        {
+          step: '2', 
+          title: language === 'ar' ? 'معالجة الذكاء الاصطناعي' : 'AI Processing',
+          description: language === 'ar' ? 'تحليل طلبك وإعداد الحل' : 'We analyze and prepare solution'
+        },
+        {
+          step: '3',
+          title: language === 'ar' ? 'احصل على النتيجة' : 'Get Results', 
+          description: language === 'ar' ? 'وثيقتك جاهزة للتحميل' : 'Download your document'
+        }
+      ].map((item, index) => (
+        <div key={index} className="flex items-start">
+          <div className="w-8 h-8 bg-[#26A69A] rounded-full flex-shrink-0 flex items-center justify-center mr-3 mt-0.5">
+            <span className="text-sm font-bold text-white">{item.step}</span>
+          </div>
+          <div>
+            <h3 className="font-semibold text-[#1F2A44] text-sm">{item.title}</h3>
+            <p className="text-gray-500 text-xs">{item.description}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  {/* Final CTA - App-like Bottom Banner */}
+  <section className="fixed bottom-0 left-0 right-0 bg-[#1F2A44] text-white px-4 py-3 shadow-up">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-xs font-medium">
+          {language === 'ar' ? 'ابدأ مجاناً الآن' : 'Start free now'}
+        </p>
+        <p className="text-[10px] text-gray-300">
+          {language === 'ar' ? 'لا تتطلب بطاقة ائتمان' : 'No credit card required'}
+        </p>
+      </div>
+      <Link to="/signup">
+        <button className="bg-[#26A69A] text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center">
+          {language === 'ar' ? 'تسجيل' : 'Sign Up'}
+          <ArrowRight className={`h-3 w-3 ${language === 'ar' ? 'mr-2 rotate-180' : 'ml-2'}`} />
+        </button>
+      </Link>
+    </div>
+  </section>
+</div>
       </div>
     );
   }
