@@ -11,10 +11,10 @@ const Index = () => {
 
   const services = [
     {
-      title: t('services.contract'),
-      description: language === 'ar' ? 'مراجعة وتحليل العقود بالذكاء الاصطناعي' : 'AI-powered contract review and analysis',
+      title: language === 'ar' ? t('صياغة العقود') : t('Contract Drafting'),
+      description: language === 'ar' ? 'صياغة العقود بالذكاء الاصطناعي' : 'Custom legal contracts drafting',
       icon: FileText,
-      route: '/services/contract',
+      route: '/services/document',
       color: 'bg-blue-500'
     },
     {
@@ -28,7 +28,7 @@ const Index = () => {
       title: t('services.dispute'),
       description: language === 'ar' ? 'أدوات حل النزاعات والمطالبات' : 'Dispute resolution and claims tools',
       icon: Users,
-      route: '/services/dispute',
+      route: '/ask',
       color: 'bg-purple-500'
     },
     {

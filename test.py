@@ -87,15 +87,24 @@ def answer_like_lawyer_gemini(question, retrieved_articles):
         for a in retrieved_articles
     ])
     prompt = f"""
-أنت محامٍ قانوني محترف ومتخصص في القوانين اللبنانية. أجب على السؤال التالي بصيغة قانونية رسمية ومقنعة، واستند إلى المواد القانونية الواردة أدناه:
+أنت محامٍ قانوني محترف ومتخصص في القوانين اللبنانية. أجب على السؤال التالي بصيغة قانونية رسمية ومقنعة:
 
 🟠 السؤال:
 {question}
 
-📘 المواد القانونية:
-{context}
+📘 المواد القانونية المتاحة:
+{context if context else 'لا توجد مواد قانونية متاحة مباشرة'}
 
 🔵 الجواب:
+1. ابدأ بتحليل السؤال القانوني المطروح
+2. اذكر أي مواد قانونية ذات صلة من المواد المتاحة مع تفسير موجز لكيفية تطبيقها
+3. إذا كانت المواد غير كافية، قدم إرشادات عامة حول:
+   - القوانين اللبنانية ذات الصلة التي يجب الرجوع إليها
+   - الإجراءات القانونية المتبعة في مثل هذه الحالات
+   - النصائح العامة للتعامل مع المسألة قانونياً
+4. أكد على أهمية استشارة محامٍ متخصص للحصول على مشورة قانونية دقيقة
+
+تجنب القول بأن المواد غير ذات صلة. بدلاً من ذلك، قدم إرشادات مفيدة بناءً على خبرتك القانونية.
 """
     return generate_gemini_response(prompt)
 
@@ -116,7 +125,7 @@ def short_conclusion_gemini(question, retrieved_articles):
         for a in retrieved_articles
     ])
     prompt = f"""
-أنت محامٍ قانوني محترف ومتخصص في القوانين اللبنانية. أجب على السؤال التالي بجملة واحدة قصيرة جداً (10-30 كلمة كحد أقصى) مستنداً إلى هذه القوانين، وبأسلوب واضح وسهل الفهم:
+أنت محامٍ قانوني محترف ومتخصص في القوانين اللبنانية. أجب على السؤال التالي بجملة واحدة قصيرة جداً (10-30 كلمة كحد أقصى) مستنداً إلى هذه القوانين إذا كانت ذات صلة، وبأسلوب واضح وسهل الفهم. إذا لم تكن المواد كافية، قدم إجابة عامة مختصرة:
 
 🟠 السؤال:
 {question}
@@ -130,16 +139,6 @@ def short_conclusion_gemini(question, retrieved_articles):
     print("Gemini raw response:", response)
     return response
 
-# Test Gemini API connection
-print("=== STARTUP: Testing Gemini API connection ===")
-try:
-    test_embedding = get_embedding_from_gemini("test")
-    print(f"SUCCESS: Gemini API working, embedding shape: {test_embedding.shape}")
-except Exception as e:
-    print(f"ERROR: Gemini API test failed: {e}")
-    raise
-
-print("=== STARTUP: All systems ready ===")
 
 # === Flask API Setup ===
 app = Flask(__name__)
