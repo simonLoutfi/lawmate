@@ -137,7 +137,7 @@ def short_conclusion_gemini(question, retrieved_articles):
     return response.text.strip()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route('/api/askai/short', methods=['POST'])
 def askai_short():
