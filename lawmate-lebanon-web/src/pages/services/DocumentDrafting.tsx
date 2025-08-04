@@ -11,9 +11,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { documentsAPI } from '@/services/api';
 import { useMediaQuery } from 'react-responsive';
-import useArabicPdf from './useArabicPdf';
-import { jsPDF } from 'jspdf';
-import { AmiriRegular } from './Amiri_Regular.js';
 
 
 interface DocumentForm {
@@ -134,7 +131,6 @@ const DocumentDrafting = () => {
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generatedDocument, setGeneratedDocument] = useState<string>('');
   const isMobile = useMediaQuery({ query: '(max-width: 768px)' });
-const { generatePdf } = useArabicPdf();
   const documentTypes = language === 'ar' ? [
     {
       id: 'judicial_power',
