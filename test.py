@@ -40,13 +40,19 @@ diag_notes = []
 @app.after_request
 def add_cors_headers(resp):
     origin = request.headers.get("Origin")
-    if origin in ALLOWED_ORIGINS:
-        resp.headers["Access-Control-Allow-Origin"] = origin
-        resp.headers["Vary"] = "Origin"
-        resp.headers["Access-Control-Allow-Credentials"] = "false"
-        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    # Reflect the origin if present; otherwise allow all (no credentials used)
+    resp.headers["Access-Control-Allow-Origin"] = origin or "*"
+    resp.headers["Vary"] = "Origin"
+
+    # Echo back requested headers if provided, else allow common ones
+    acrh = request.headers.get("Access-Control-Request-Headers", "Content-Type, Authorization")
+    resp.headers["Access-Control-Allow-Headers"] = acrh
+
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    # We are NOT using cookies; omit or explicitly set false
+    resp.headers["Access-Control-Allow-Credentials"] = "false"
     return resp
+
 
 def _preflight_ok():
     return ("", 204)
