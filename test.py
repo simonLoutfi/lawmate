@@ -137,34 +137,22 @@ def short_conclusion_gemini(question, retrieved_articles):
 # === Flask API Setup ===
 app = Flask(__name__)
 
-# Simplified CORS configuration - let flask_cors handle everything
+# Simple CORS configuration - let flask_cors handle everything
 CORS(app, resources={
     r"/api/*": {
         "origins": ["https://lawmate-lb.netlify.app", "http://localhost:3000"],
         "allow_headers": ["Content-Type", "Authorization"],
-        "methods": ["GET", "POST", "OPTIONS"]
+        "methods": ["GET", "POST", "OPTIONS"],
+        "supports_credentials": False
     }
 })
 
-@app.after_request
-def after_request(response):
-    """Add CORS headers to every response"""
-    response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,Origin,X-Requested-With')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
+# Remove the @app.after_request decorator to avoid duplicate headers
+# Remove the explicit OPTIONS handlers and let Flask-CORS handle them
 
-@app.route('/api/test', methods=['GET', 'POST', 'OPTIONS'])
+@app.route('/api/test', methods=['GET', 'POST'])
 def test_endpoint():
     """Test endpoint to verify CORS is working"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'preflight ok'})
-        response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-        return response, 200
-    
     return jsonify({
         "status": "success",
         "method": request.method,
@@ -172,14 +160,8 @@ def test_endpoint():
         "message": "CORS is working"
     })
 
-@app.route('/api/askai/short', methods=['POST', 'OPTIONS'])
+@app.route('/api/askai/short', methods=['POST'])
 def askai_short():
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'preflight ok'})
-        response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        return response, 200
-        
     try:
         print("=== DEBUG: Starting askai_short ===")
         print(f"Request method: {request.method}")
@@ -282,14 +264,8 @@ def askai_short():
         traceback.print_exc()
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
-@app.route('/api/askai', methods=['POST', 'OPTIONS'])
+@app.route('/api/askai', methods=['POST'])
 def askai():
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'preflight ok'})
-        response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        return response, 200
-        
     try:
         print("=== DEBUG: Starting askai ===")
         print(f"Request method: {request.method}")
