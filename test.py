@@ -1,25 +1,24 @@
-# app.py
+# app.py (with diagnostics & dim check)
 import os
-import json
 import pickle
 import numpy as np
 import faiss
 from flask import Flask, request, jsonify
-
-# Optional: pip install google-generativeai
 import google.generativeai as genai
 
 # ===============================
 # Config
 # ===============================
-# Comma-separated list of allowed origins, e.g.:
-# ALLOWED_ORIGINS="https://lawmate-lb.netlify.app,http://localhost:5173"
 ALLOWED_ORIGINS = {
-    o.strip() for o in os.getenv("ALLOWED_ORIGINS", "https://lawmate-lb.netlify.app,http://localhost:5173").split(",")
-    if o.strip()
+    o.strip() for o in os.getenv(
+        "ALLOWED_ORIGINS",
+        "https://lawmate-lb.netlify.app,http://localhost:5173"
+    ).split(",") if o.strip()
 }
-
 PORT = int(os.environ.get("PORT", 8080))
+
+# IMPORTANT: set this to the SAME model you used to build embeddings.npy/faiss_index.index
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "models/embedding-001")
 
 # ===============================
 # App
@@ -34,7 +33,7 @@ article_vectors = None
 index = None
 files_ready = False
 gemini_ready = False
-
+diag_notes = []  # collect debug notes visible via /api/diag
 
 # ===============================
 # CORS helper
@@ -45,17 +44,13 @@ def add_cors_headers(resp):
     if origin in ALLOWED_ORIGINS:
         resp.headers["Access-Control-Allow-Origin"] = origin
         resp.headers["Vary"] = "Origin"
-        # Only set to true if you actually use cookies/auth; here we don't
         resp.headers["Access-Control-Allow-Credentials"] = "false"
         resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     return resp
 
-
 def _preflight_ok():
-    """Return a minimal successful preflight response."""
     return ("", 204)
-
 
 # ===============================
 # Lazy initialization
@@ -65,67 +60,66 @@ def init_gemini():
     if gemini_ready:
         return
     try:
-        # api_key = os.getenv("GOOGLE_API_KEY")
-        # if not api_key:
-        #     print("[WARN] GOOGLE_API_KEY is not set. Gemini will not be available.")
-        #     return
-        # genai.configure(api_key=api_key)
-        genai.configure(api_key="AIzaSyD2LhiJ5Lhe2QxMejpL_A_msbzs_Gf5BJc") 
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            # TEMP fallback so you can test; remove once env var is set
+            api_key = "AIzaSyD2LhiJ5Lhe2QxMejpL_A_msbzs_Gf5BJc"
+            diag_notes.append("GOOGLE_API_KEY missing; using TEMP fallback key. (Set GOOGLE_API_KEY in env!)")
+        genai.configure(api_key=api_key)
         gemini_ready = True
-        print("[OK] Gemini configured")
+        diag_notes.append("Gemini initialized OK.")
     except Exception as e:
-        print("[ERROR] Gemini init failed:", e)
-
+        diag_notes.append(f"Gemini init failed: {e}")
 
 def init_files():
     global flat_articles, article_vectors, index, files_ready
     if files_ready:
         return
     try:
-        if not os.path.exists("articles.pkl"):
-            raise FileNotFoundError("articles.pkl not found")
-        if not os.path.exists("embeddings.npy"):
-            raise FileNotFoundError("embeddings.npy not found")
-        if not os.path.exists("faiss_index.index"):
-            raise FileNotFoundError("faiss_index.index not found")
+        missing = []
+        for f in ["articles.pkl", "embeddings.npy", "faiss_index.index"]:
+            if not os.path.exists(f):
+                missing.append(f)
+        if missing:
+            diag_notes.append(f"Missing files: {missing}")
+            return
 
         with open("articles.pkl", "rb") as f:
             flat_articles = pickle.load(f)
         article_vectors = np.load("embeddings.npy")
         index = faiss.read_index("faiss_index.index")
         files_ready = True
-        print(f"[OK] Loaded {len(flat_articles)} articles, embeddings {article_vectors.shape}, FAISS {index.ntotal}")
+        diag_notes.append(
+            f"Files OK: articles={len(flat_articles)}, "
+            f"embeddings_shape={tuple(article_vectors.shape)}, "
+            f"faiss_ntotal={index.ntotal}, faiss_d={index.d}"
+        )
     except Exception as e:
-        print("[ERROR] File init failed:", e)
-
+        diag_notes.append(f"File init failed: {e}")
 
 @app.before_request
 def ensure_inited():
-    # Make sure we always try to init, but don't crash the process
     init_gemini()
     init_files()
-
 
 # ===============================
 # Gemini helpers
 # ===============================
-def get_embedding_from_gemini(text):
-    """Get text embedding using Gemini's embedding model."""
+def get_embedding_from_gemini(text: str) -> np.ndarray:
     if not gemini_ready:
         raise RuntimeError("Gemini not initialized")
     try:
         result = genai.embed_content(
-            model="models/embedding-001",
+            model=EMBEDDING_MODEL,
             content=text,
             task_type="retrieval_document",
         )
-        return np.array(result["embedding"], dtype=np.float32)
+        emb = np.array(result["embedding"], dtype=np.float32)
+        return emb
     except Exception as e:
         raise RuntimeError(f"Embedding generation error: {e}")
 
-
-def generate_gemini_response(prompt, model_name="gemini-1.5-flash"):
-    """Generate response from Gemini with proper error handling."""
+def generate_gemini_response(prompt: str, model_name: str = "gemini-1.5-flash") -> str:
     if not gemini_ready:
         raise RuntimeError("Gemini not initialized")
     try:
@@ -135,14 +129,11 @@ def generate_gemini_response(prompt, model_name="gemini-1.5-flash"):
     except Exception as e:
         raise RuntimeError(f"Gemini generation error: {e}")
 
-
 def answer_like_lawyer_gemini(question, retrieved_articles):
-    """Generate detailed legal answer using Gemini."""
     context = "\n\n".join([
         f"📄 {a.get('law','(غير معروف)')} - المادة {a.get('article_number','?')}:\n{a.get('text','')}"
         for a in (retrieved_articles or [])
     ])
-
     prompt = f"""
 أنت محامٍ قانوني محترف ومتخصص في القوانين اللبنانية. أجب على السؤال التالي بصيغة قانونية رسمية ومقنعة:
 
@@ -165,9 +156,7 @@ def answer_like_lawyer_gemini(question, retrieved_articles):
 """.strip()
     return generate_gemini_response(prompt)
 
-
 def translate_text(text, source_lang, target_lang):
-    """Translate text using Gemini."""
     prompt = f"""ترجم النص التالي من {source_lang} إلى {target_lang} بدون أي إضافات:
 
 النص:
@@ -176,14 +165,11 @@ def translate_text(text, source_lang, target_lang):
 الترجمة:"""
     return generate_gemini_response(prompt)
 
-
 def short_conclusion_gemini(question, retrieved_articles):
-    """Generate short legal conclusion using Gemini."""
     context = "\n\n".join([
         f"📄 {a.get('law','(غير معروف)')} - المادة {a.get('article_number','?')}:\n{a.get('text','')}"
         for a in (retrieved_articles or [])
     ])
-
     prompt = f"""
 أنت محامٍ قانوني محترف ومتخصص في القوانين اللبنانية. أجب على السؤال التالي بجملة واحدة قصيرة جداً (10-30 كلمة كحد أقصى) مستنداً إلى هذه القوانين إذا كانت ذات صلة، وبأسلوب واضح وسهل الفهم. إذا لم تكن المواد كافية، قدم إجابة عامة مختصرة:
 
@@ -197,33 +183,56 @@ def short_conclusion_gemini(question, retrieved_articles):
 """.strip()
     return generate_gemini_response(prompt)
 
-
 # ===============================
-# Utility
+# Utilities
 # ===============================
 def require_json():
     if not request.is_json:
         return False, jsonify({"error": "Request must be JSON"}), 400
     try:
         data = request.get_json(silent=False)
+        if data is None:
+            return False, jsonify({"error": "Empty JSON body"}), 400
         return True, data, None
-    except Exception:
-        # If body is invalid JSON, still return CORS-wrapped error
+    except Exception as e:
         raw = request.get_data(as_text=True)
-        return False, jsonify({"error": "Invalid JSON", "body": raw}), 400
-
+        return False, jsonify({"error": "Invalid JSON", "detail": str(e), "body": raw}), 400
 
 def ready_or_500():
     if not files_ready:
-        return False, jsonify({"error": "Server files not initialized"}), 500
+        return False, jsonify({
+            "error": "Server files not initialized",
+            "hint": "Ensure articles.pkl, embeddings.npy, faiss_index.index exist in the working directory."
+        }), 500
     if not gemini_ready:
-        return False, jsonify({"error": "Gemini not initialized (check GOOGLE_API_KEY)"}), 500
+        return False, jsonify({
+            "error": "Gemini not initialized",
+            "hint": "Set GOOGLE_API_KEY in environment (or remove TEMP fallback)."
+        }), 500
     return True, None, None
-
 
 # ===============================
 # Routes
 # ===============================
+@app.route("/api/diag", methods=["GET", "OPTIONS"])
+def diag():
+    if request.method == "OPTIONS":
+        return _preflight_ok()
+    info = {
+        "files_ready": files_ready,
+        "gemini_ready": gemini_ready,
+        "allowed_origins": list(ALLOWED_ORIGINS),
+        "embedding_model": EMBEDDING_MODEL,
+        "notes": diag_notes[-20:],
+    }
+    if files_ready and index is not None and article_vectors is not None:
+        info.update({
+            "faiss_ntotal": int(index.ntotal),
+            "faiss_d": int(index.d),
+            "embeddings_shape": tuple(article_vectors.shape),
+        })
+    return jsonify(info)
+
 @app.route("/api/health", methods=["GET", "OPTIONS"])
 def health_check():
     if request.method == "OPTIONS":
@@ -235,8 +244,8 @@ def health_check():
         "files_ready": files_ready,
         "gemini_ready": gemini_ready,
         "allowed_origins": list(ALLOWED_ORIGINS),
+        "embedding_model": EMBEDDING_MODEL,
     })
-
 
 @app.route("/api/test", methods=["GET", "POST", "OPTIONS"])
 def test_endpoint():
@@ -249,6 +258,20 @@ def test_endpoint():
         "message": "CORS is working",
     })
 
+def _search_and_check_dim(query_text):
+    """Embed, check dimension vs FAISS, then search."""
+    q = get_embedding_from_gemini(query_text).reshape(1, -1)
+    if index.d != q.shape[1]:
+        # Clear, actionable error (very common)
+        return None, jsonify({
+            "error": "Embedding dimension mismatch",
+            "detail": f"FAISS index expects d={index.d}, but query has d={q.shape[1]}",
+            "hint": "Rebuild embeddings.npy & faiss_index.index with the SAME embedding model "
+                    f"('{EMBEDDING_MODEL}') that the server is using now; or set EMBEDDING_MODEL to your original."
+        }), 500
+    D, I = index.search(q, 3)
+    articles = [flat_articles[i] for i in I[0] if 0 <= i < len(flat_articles)]
+    return articles, None, None
 
 @app.route("/api/askai/short", methods=["POST", "OPTIONS"])
 def askai_short():
@@ -257,11 +280,10 @@ def askai_short():
 
     ok, data_or_resp, err = require_json()
     if not ok:
-        return data_or_resp, err  # CORS-wrapped 400
+        return data_or_resp, err
 
     question = (data_or_resp or {}).get("question", "")
     lang = (data_or_resp or {}).get("lang", "ar")
-
     if not question:
         return jsonify({"error": "No question provided"}), 400
 
@@ -269,46 +291,35 @@ def askai_short():
     if not ok_ready:
         return resp_ready, code_ready
 
-    # Translate if needed
     try:
         translated_question = translate_text(question, "English", "Arabic") if lang == "en" else question
     except Exception as e:
-        return jsonify({"error": f"Translation failed: {e}"}), 500
+        return jsonify({"error": "Translation failed", "detail": str(e)}), 500
 
-    # Retrieve
     try:
-        query_vec = get_embedding_from_gemini(translated_question).reshape(1, -1)
-        D, I = index.search(query_vec, 3)
-        articles = [flat_articles[i] for i in I[0] if 0 <= i < len(flat_articles)]
+        articles, err_resp, err_code = _search_and_check_dim(translated_question)
+        if err_resp:
+            return err_resp, err_code
     except Exception as e:
-        return jsonify({"error": f"Search failed: {e}"}), 500
+        return jsonify({"error": "Search failed", "detail": str(e)}), 500
 
-    # Generate short answer
     try:
         short_answer_ar = short_conclusion_gemini(translated_question, articles)
     except Exception as e:
-        return jsonify({"error": f"Answer generation failed: {e}"}), 500
+        return jsonify({"error": "Answer generation failed", "detail": str(e)}), 500
 
-    response_data = {
-        "articles": articles,
-        "short_answer_ar": short_answer_ar,
-    }
-
-    # Return in question language
+    resp = {"articles": articles, "short_answer_ar": short_answer_ar}
     try:
         if lang == "en":
-            short_answer_en = translate_text(short_answer_ar, "Arabic", "English")
-            response_data["short_answer"] = short_answer_en
-            response_data["short_answer_en"] = short_answer_en
+            ans_en = translate_text(short_answer_ar, "Arabic", "English")
+            resp["short_answer"] = ans_en
+            resp["short_answer_en"] = ans_en
         else:
-            response_data["short_answer"] = short_answer_ar
+            resp["short_answer"] = short_answer_ar
     except Exception as e:
-        # Fall back to Arabic
-        response_data["short_answer"] = short_answer_ar
-        response_data["translation_error"] = str(e)
-
-    return jsonify(response_data)
-
+        resp["short_answer"] = short_answer_ar
+        resp["translation_error"] = str(e)
+    return jsonify(resp)
 
 @app.route("/api/askai", methods=["POST", "OPTIONS"])
 def askai():
@@ -317,11 +328,10 @@ def askai():
 
     ok, data_or_resp, err = require_json()
     if not ok:
-        return data_or_resp, err  # CORS-wrapped 400
+        return data_or_resp, err
 
     question = (data_or_resp or {}).get("question", "")
     lang = (data_or_resp or {}).get("lang", "ar")
-
     if not question:
         return jsonify({"error": "No question provided"}), 400
 
@@ -329,49 +339,38 @@ def askai():
     if not ok_ready:
         return resp_ready, code_ready
 
-    # Translate if needed
     try:
         translated_question = translate_text(question, "English", "Arabic") if lang == "en" else question
     except Exception as e:
-        return jsonify({"error": f"Translation failed: {e}"}), 500
+        return jsonify({"error": "Translation failed", "detail": str(e)}), 500
 
-    # Retrieve
     try:
-        query_vec = get_embedding_from_gemini(translated_question).reshape(1, -1)
-        D, I = index.search(query_vec, 3)
-        articles = [flat_articles[i] for i in I[0] if 0 <= i < len(flat_articles)]
+        articles, err_resp, err_code = _search_and_check_dim(translated_question)
+        if err_resp:
+            return err_resp, err_code
     except Exception as e:
-        return jsonify({"error": f"Search failed: {e}"}), 500
+        return jsonify({"error": "Search failed", "detail": str(e)}), 500
 
-    # Generate full answer
     try:
         answer_ar = answer_like_lawyer_gemini(translated_question, articles)
     except Exception as e:
-        return jsonify({"error": f"Answer generation failed: {e}"}), 500
+        return jsonify({"error": "Answer generation failed", "detail": str(e)}), 500
 
-    response_data = {
-        "articles": articles,
-        "answer_ar": answer_ar,
-    }
-
-    # Return in question language
+    resp = {"articles": articles, "answer_ar": answer_ar}
     try:
         if lang == "en":
-            answer_en = translate_text(answer_ar, "Arabic", "English")
-            response_data["answer"] = answer_en
-            response_data["answer_en"] = answer_en
+            ans_en = translate_text(answer_ar, "Arabic", "English")
+            resp["answer"] = ans_en
+            resp["answer_en"] = ans_en
         else:
-            response_data["answer"] = answer_ar
+            resp["answer"] = answer_ar
     except Exception as e:
-        response_data["answer"] = answer_ar
-        response_data["translation_error"] = str(e)
-
-    return jsonify(response_data)
-
+        resp["answer"] = answer_ar
+        resp["translation_error"] = str(e)
+    return jsonify(resp)
 
 # ===============================
 # Entrypoint
 # ===============================
 if __name__ == "__main__":
-    # Do not eager-init here; let requests succeed with CORS even if init fails
     app.run(host="0.0.0.0", port=PORT, debug=False)
