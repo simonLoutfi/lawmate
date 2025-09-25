@@ -140,17 +140,47 @@ def short_conclusion_gemini(question, retrieved_articles):
 # === Flask API Setup ===
 app = Flask(__name__)
 
-# Configure CORS properly
+# Configure CORS with more permissive settings for debugging
 CORS(app, 
-     origins=["https://lawmate-lb.netlify.app", "http://localhost:3000"],
-     allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+     origins=["https://lawmate-lb.netlify.app", "http://localhost:3000", "https://lawmate-lb.netlify.app"],
+     allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With", "Access-Control-Request-Method", "Access-Control-Request-Headers"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     supports_credentials=True)
+     supports_credentials=True,
+     max_age=3600)
 
-@app.route('/api/askai/short', methods=['POST', 'OPTIONS'])
+# Add explicit OPTIONS handling for all routes
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        print(f"=== PREFLIGHT REQUEST ===")
+        print(f"Origin: {request.headers.get('Origin')}")
+        print(f"Access-Control-Request-Method: {request.headers.get('Access-Control-Request-Method')}")
+        print(f"Access-Control-Request-Headers: {request.headers.get('Access-Control-Request-Headers')}")
+        
+        response = jsonify({'status': 'preflight ok'})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization,Accept,Origin,X-Requested-With")
+        response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+        response.headers.add("Access-Control-Max-Age", "3600")
+        return response, 200
+
+# Add a test endpoint
+@app.route('/api/test', methods=['GET', 'POST', 'OPTIONS'])
+def test_endpoint():
+    return jsonify({
+        "status": "success",
+        "method": request.method,
+        "origin": request.headers.get('Origin', 'No origin'),
+        "message": "CORS is working"
+    })
+
+@app.route('/api/askai/short', methods=['POST'])
 def askai_short():
     try:
         print("=== DEBUG: Starting askai_short ===")
+        print(f"Request method: {request.method}")
+        print(f"Request origin: {request.headers.get('Origin', 'No origin')}")
+        print(f"Content-Type: {request.headers.get('Content-Type', 'No content-type')}")
         
         # Check if request has JSON data
         if not request.is_json:
@@ -248,9 +278,13 @@ def askai_short():
         traceback.print_exc()
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
-@app.route('/api/askai', methods=['POST', 'OPTIONS'])
+@app.route('/api/askai', methods=['POST'])
 def askai():
     try:
+        print("=== DEBUG: Starting askai ===")
+        print(f"Request method: {request.method}")
+        print(f"Request origin: {request.headers.get('Origin', 'No origin')}")
+        
         data = request.get_json()
         if not data:
             return jsonify({'error': 'No data provided'}), 400
@@ -311,6 +345,8 @@ def askai():
 
     except Exception as e:
         print(f"Error in askai: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
