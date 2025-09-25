@@ -65,11 +65,12 @@ def init_gemini():
     if gemini_ready:
         return
     try:
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            print("[WARN] GOOGLE_API_KEY is not set. Gemini will not be available.")
-            return
-        genai.configure(api_key=api_key)
+        # api_key = os.getenv("GOOGLE_API_KEY")
+        # if not api_key:
+        #     print("[WARN] GOOGLE_API_KEY is not set. Gemini will not be available.")
+        #     return
+        # genai.configure(api_key=api_key)
+        genai.configure(api_key="AIzaSyD2LhiJ5Lhe2QxMejpL_A_msbzs_Gf5BJc") 
         gemini_ready = True
         print("[OK] Gemini configured")
     except Exception as e:
