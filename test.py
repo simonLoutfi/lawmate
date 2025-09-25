@@ -9,9 +9,9 @@ import os
 # === Setup Gemini API ===
 print("=== STARTUP: Configuring Gemini API ===")
 # api_key = os.getenv("GOOGLE_API_KEY")
-if not api_key:
-    print("ERROR: GOOGLE_API_KEY environment variable not set")
-    raise ValueError("GOOGLE_API_KEY environment variable is required")
+# if not api_key:
+#     print("ERROR: GOOGLE_API_KEY environment variable not set")
+#     raise ValueError("GOOGLE_API_KEY environment variable is required")
 
 # genai.configure(api_key=api_key)
 genai.configure(api_key="AIzaSyD2LhiJ5Lhe2QxMejpL_A_msbzs_Gf5BJc") 
