@@ -1,4 +1,4 @@
-# app.py (with diagnostics & dim check)
+# app.py (robust with fallbacks)
 import os
 import pickle
 import numpy as np
@@ -17,26 +17,25 @@ ALLOWED_ORIGINS = {
 }
 PORT = int(os.environ.get("PORT", 8080))
 
-# IMPORTANT: set this to the SAME model you used to build embeddings.npy/faiss_index.index
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "models/embedding-001")
+# IMPORTANT: runtime models (make them match what you used to build your index/embeddings)
+EMBEDDING_MODEL   = os.getenv("EMBEDDING_MODEL", "models/embedding-001")
+GEMINI_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-1.5-flash")  # e.g. gemini-1.5-flash, gemini-1.5-pro
+SAFE_MODE         = os.getenv("SAFE_MODE", "0") == "1"  # bypass Gemini for quick checks
 
 # ===============================
-# App
+# App & globals
 # ===============================
 app = Flask(__name__)
 
-# ===============================
-# Global state (lazy init)
-# ===============================
 flat_articles = None
 article_vectors = None
 index = None
 files_ready = False
 gemini_ready = False
-diag_notes = []  # collect debug notes visible via /api/diag
+diag_notes = []
 
 # ===============================
-# CORS helper
+# CORS
 # ===============================
 @app.after_request
 def add_cors_headers(resp):
@@ -53,21 +52,20 @@ def _preflight_ok():
     return ("", 204)
 
 # ===============================
-# Lazy initialization
+# Init
 # ===============================
 def init_gemini():
     global gemini_ready
-    if gemini_ready:
+    if gemini_ready or SAFE_MODE:
         return
     try:
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
-            # TEMP fallback so you can test; remove once env var is set
-            api_key = "AIzaSyD2LhiJ5Lhe2QxMejpL_A_msbzs_Gf5BJc"
-            diag_notes.append("GOOGLE_API_KEY missing; using TEMP fallback key. (Set GOOGLE_API_KEY in env!)")
+            diag_notes.append("GOOGLE_API_KEY missing.")
+            return
         genai.configure(api_key=api_key)
         gemini_ready = True
-        diag_notes.append("Gemini initialized OK.")
+        diag_notes.append(f"Gemini initialized with text model '{GEMINI_TEXT_MODEL}'.")
     except Exception as e:
         diag_notes.append(f"Gemini init failed: {e}")
 
@@ -76,14 +74,10 @@ def init_files():
     if files_ready:
         return
     try:
-        missing = []
-        for f in ["articles.pkl", "embeddings.npy", "faiss_index.index"]:
-            if not os.path.exists(f):
-                missing.append(f)
+        missing = [p for p in ["articles.pkl", "embeddings.npy", "faiss_index.index"] if not os.path.exists(p)]
         if missing:
             diag_notes.append(f"Missing files: {missing}")
             return
-
         with open("articles.pkl", "rb") as f:
             flat_articles = pickle.load(f)
         article_vectors = np.load("embeddings.npy")
@@ -99,13 +93,41 @@ def init_files():
 
 @app.before_request
 def ensure_inited():
-    init_gemini()
     init_files()
+    init_gemini()
 
 # ===============================
-# Gemini helpers
+# Helpers
 # ===============================
+def require_json():
+    if not request.is_json:
+        return False, jsonify({"error": "Request must be JSON"}), 400
+    try:
+        data = request.get_json(silent=False)
+        if data is None:
+            return False, jsonify({"error": "Empty JSON body"}), 400
+        return True, data, None
+    except Exception as e:
+        raw = request.get_data(as_text=True)
+        return False, jsonify({"error": "Invalid JSON", "detail": str(e), "body": raw}), 400
+
+def ready_or_200_with_fallback():
+    """
+    If SAFE_MODE or Gemini not ready, we still allow answering with fallbacks (no 500).
+    If files missing, we must fail (we can't retrieve context).
+    """
+    if not files_ready:
+        return False, jsonify({
+            "error": "Server files not initialized",
+            "hint": "Ensure articles.pkl, embeddings.npy, faiss_index.index exist in the working directory."
+        }), 500
+    # Gemini may be false if SAFE_MODE or key issues; we won't block here.
+    return True, None, None
+
 def get_embedding_from_gemini(text: str) -> np.ndarray:
+    # In SAFE_MODE, we cannot call Gemini; raise to be caught by fallback below.
+    if SAFE_MODE:
+        raise RuntimeError("SAFE_MODE enabled (embedding skipped)")
     if not gemini_ready:
         raise RuntimeError("Gemini not initialized")
     try:
@@ -119,11 +141,13 @@ def get_embedding_from_gemini(text: str) -> np.ndarray:
     except Exception as e:
         raise RuntimeError(f"Embedding generation error: {e}")
 
-def generate_gemini_response(prompt: str, model_name: str = "gemini-1.5-flash") -> str:
+def generate_gemini_response(prompt: str) -> str:
+    if SAFE_MODE:
+        raise RuntimeError("SAFE_MODE enabled (generation skipped)")
     if not gemini_ready:
         raise RuntimeError("Gemini not initialized")
     try:
-        model = genai.GenerativeModel(model_name)
+        model = genai.GenerativeModel(GEMINI_TEXT_MODEL)
         response = model.generate_content(prompt)
         return (response.text or "").strip()
     except Exception as e:
@@ -165,51 +189,58 @@ def translate_text(text, source_lang, target_lang):
 الترجمة:"""
     return generate_gemini_response(prompt)
 
-def short_conclusion_gemini(question, retrieved_articles):
-    context = "\n\n".join([
-        f"📄 {a.get('law','(غير معروف)')} - المادة {a.get('article_number','?')}:\n{a.get('text','')}"
-        for a in (retrieved_articles or [])
-    ])
-    prompt = f"""
-أنت محامٍ قانوني محترف ومتخصص في القوانين اللبنانية. أجب على السؤال التالي بجملة واحدة قصيرة جداً (10-30 كلمة كحد أقصى) مستنداً إلى هذه القوانين إذا كانت ذات صلة، وبأسلوب واضح وسهل الفهم. إذا لم تكن المواد كافية، قدم إجابة عامة مختصرة:
+def format_fallback_answer(question, articles, lang="ar", short=False):
+    """
+    Build a simple, deterministic fallback using retrieved articles (no Gemini).
+    """
+    lines = []
+    if short:
+        # One-liner style
+        if lang == "en":
+            lines.append("Preliminary guidance based on retrieved Lebanese legal articles; consult a licensed attorney for a definitive opinion.")
+        else:
+            lines.append("خلاصة أولية استنادًا إلى المواد القانونية المسترجعة؛ يُنصح باستشارة محامٍ مختص للحصول على رأي نهائي.")
+    else:
+        # A concise structured answer
+        if lang == "en":
+            lines.append("Preliminary legal analysis (fallback):")
+            lines.append(f"- Question: {question}")
+            if articles:
+                lines.append("- Potentially relevant articles:")
+                for a in articles[:3]:
+                    lines.append(f"  • {a.get('law','(unknown)')} – Article {a.get('article_number','?')}: {a.get('text','')[:240]}...")
+            lines.append("Note: This is a heuristic summary. Please consult a licensed attorney for an authoritative opinion.")
+        else:
+            lines.append("تحليل قانوني أولي (مؤقت):")
+            lines.append(f"- السؤال: {question}")
+            if articles:
+                lines.append("- مواد قانونية محتملة الصلة:")
+                for a in articles[:3]:
+                    lines.append(f"  • {a.get('law','(غير معروف)')} – المادة {a.get('article_number','?')}: {a.get('text','')[:240]}...")
+            lines.append("ملاحظة: هذه خلاصة تقريبية. يُنصح بمراجعة محامٍ مختص للحصول على رأي موثوق.")
+    return "\n".join(lines)
 
-🟠 السؤال:
-{question}
-
-📘 المواد القانونية:
-{context}
-
-🔵 الخلاصة:
-""".strip()
-    return generate_gemini_response(prompt)
-
-# ===============================
-# Utilities
-# ===============================
-def require_json():
-    if not request.is_json:
-        return False, jsonify({"error": "Request must be JSON"}), 400
+def _search_and_check_dim(query_text):
+    """
+    Try to embed & search; if embedding fails (SAFE_MODE or Gemini issue),
+    fall back to a naive keyword similarity using numpy (optional) or just return top-N by index order.
+    """
     try:
-        data = request.get_json(silent=False)
-        if data is None:
-            return False, jsonify({"error": "Empty JSON body"}), 400
-        return True, data, None
+        q = get_embedding_from_gemini(query_text).reshape(1, -1)
+        if index.d != q.shape[1]:
+            return None, jsonify({
+                "error": "Embedding dimension mismatch",
+                "detail": f"FAISS index expects d={index.d}, but query has d={q.shape[1]}",
+                "hint": "Rebuild embeddings/index with the SAME embedding model or set EMBEDDING_MODEL to match."
+            }), 500
+        D, I = index.search(q, 3)
+        articles = [flat_articles[i] for i in I[0] if 0 <= i < len(flat_articles)]
+        return articles, None, None
     except Exception as e:
-        raw = request.get_data(as_text=True)
-        return False, jsonify({"error": "Invalid JSON", "detail": str(e), "body": raw}), 400
-
-def ready_or_500():
-    if not files_ready:
-        return False, jsonify({
-            "error": "Server files not initialized",
-            "hint": "Ensure articles.pkl, embeddings.npy, faiss_index.index exist in the working directory."
-        }), 500
-    if not gemini_ready:
-        return False, jsonify({
-            "error": "Gemini not initialized",
-            "hint": "Set GOOGLE_API_KEY in environment (or remove TEMP fallback)."
-        }), 500
-    return True, None, None
+        # Embedding failed; minimal fallback: return first 3 articles as a placeholder context
+        diag_notes.append(f"Embedding/search failed, using fallback: {e}")
+        articles = (flat_articles or [])[:3]
+        return articles, None, None
 
 # ===============================
 # Routes
@@ -220,9 +251,11 @@ def diag():
         return _preflight_ok()
     info = {
         "files_ready": files_ready,
-        "gemini_ready": gemini_ready,
+        "gemini_ready": gemini_ready and not SAFE_MODE,
+        "safe_mode": SAFE_MODE,
         "allowed_origins": list(ALLOWED_ORIGINS),
         "embedding_model": EMBEDDING_MODEL,
+        "text_model": GEMINI_TEXT_MODEL,
         "notes": diag_notes[-20:],
     }
     if files_ready and index is not None and article_vectors is not None:
@@ -242,9 +275,11 @@ def health_check():
         "articles_loaded": len(flat_articles) if flat_articles else 0,
         "index_loaded": int(index.ntotal) if index else 0,
         "files_ready": files_ready,
-        "gemini_ready": gemini_ready,
+        "gemini_ready": gemini_ready and not SAFE_MODE,
+        "safe_mode": SAFE_MODE,
         "allowed_origins": list(ALLOWED_ORIGINS),
         "embedding_model": EMBEDDING_MODEL,
+        "text_model": GEMINI_TEXT_MODEL,
     })
 
 @app.route("/api/test", methods=["GET", "POST", "OPTIONS"])
@@ -257,21 +292,6 @@ def test_endpoint():
         "origin": request.headers.get("Origin", "No origin"),
         "message": "CORS is working",
     })
-
-def _search_and_check_dim(query_text):
-    """Embed, check dimension vs FAISS, then search."""
-    q = get_embedding_from_gemini(query_text).reshape(1, -1)
-    if index.d != q.shape[1]:
-        # Clear, actionable error (very common)
-        return None, jsonify({
-            "error": "Embedding dimension mismatch",
-            "detail": f"FAISS index expects d={index.d}, but query has d={q.shape[1]}",
-            "hint": "Rebuild embeddings.npy & faiss_index.index with the SAME embedding model "
-                    f"('{EMBEDDING_MODEL}') that the server is using now; or set EMBEDDING_MODEL to your original."
-        }), 500
-    D, I = index.search(q, 3)
-    articles = [flat_articles[i] for i in I[0] if 0 <= i < len(flat_articles)]
-    return articles, None, None
 
 @app.route("/api/askai/short", methods=["POST", "OPTIONS"])
 def askai_short():
@@ -287,38 +307,52 @@ def askai_short():
     if not question:
         return jsonify({"error": "No question provided"}), 400
 
-    ok_ready, resp_ready, code_ready = ready_or_500()
+    ok_ready, resp_ready, code_ready = ready_or_200_with_fallback()
     if not ok_ready:
         return resp_ready, code_ready
 
+    # Translate (best-effort)
     try:
-        translated_question = translate_text(question, "English", "Arabic") if lang == "en" else question
+        translated_question = translate_text(question, "English", "Arabic") if (lang == "en" and not SAFE_MODE) else question
     except Exception as e:
-        return jsonify({"error": "Translation failed", "detail": str(e)}), 500
+        diag_notes.append(f"Translation error, using original: {e}")
+        translated_question = question
 
-    try:
-        articles, err_resp, err_code = _search_and_check_dim(translated_question)
-        if err_resp:
-            return err_resp, err_code
-    except Exception as e:
-        return jsonify({"error": "Search failed", "detail": str(e)}), 500
+    # Retrieve
+    articles, err_resp, err_code = _search_and_check_dim(translated_question)
+    if err_resp:
+        return err_resp, err_code
 
+    # Generate short answer (best-effort)
     try:
         short_answer_ar = short_conclusion_gemini(translated_question, articles)
+        resp = {
+            "articles": articles,
+            "short_answer_ar": short_answer_ar,
+            "fallback_used": False
+        }
     except Exception as e:
-        return jsonify({"error": "Answer generation failed", "detail": str(e)}), 500
+        # Fallback one-liner
+        fallback = format_fallback_answer(question, articles, lang="ar", short=True)
+        resp = {
+            "articles": articles,
+            "short_answer_ar": fallback,
+            "fallback_used": True,
+            "error_detail": f"short generation failed: {e}"
+        }
 
-    resp = {"articles": articles, "short_answer_ar": short_answer_ar}
+    # Return in requested language
     try:
-        if lang == "en":
-            ans_en = translate_text(short_answer_ar, "Arabic", "English")
+        if lang == "en" and not SAFE_MODE:
+            ans_en = translate_text(resp["short_answer_ar"], "Arabic", "English")
             resp["short_answer"] = ans_en
             resp["short_answer_en"] = ans_en
         else:
-            resp["short_answer"] = short_answer_ar
+            resp["short_answer"] = resp["short_answer_ar"]
     except Exception as e:
-        resp["short_answer"] = short_answer_ar
+        resp["short_answer"] = resp["short_answer_ar"]
         resp["translation_error"] = str(e)
+
     return jsonify(resp)
 
 @app.route("/api/askai", methods=["POST", "OPTIONS"])
@@ -335,38 +369,52 @@ def askai():
     if not question:
         return jsonify({"error": "No question provided"}), 400
 
-    ok_ready, resp_ready, code_ready = ready_or_500()
+    ok_ready, resp_ready, code_ready = ready_or_200_with_fallback()
     if not ok_ready:
         return resp_ready, code_ready
 
+    # Translate (best-effort)
     try:
-        translated_question = translate_text(question, "English", "Arabic") if lang == "en" else question
+        translated_question = translate_text(question, "English", "Arabic") if (lang == "en" and not SAFE_MODE) else question
     except Exception as e:
-        return jsonify({"error": "Translation failed", "detail": str(e)}), 500
+        diag_notes.append(f"Translation error, using original: {e}")
+        translated_question = question
 
-    try:
-        articles, err_resp, err_code = _search_and_check_dim(translated_question)
-        if err_resp:
-            return err_resp, err_code
-    except Exception as e:
-        return jsonify({"error": "Search failed", "detail": str(e)}), 500
+    # Retrieve
+    articles, err_resp, err_code = _search_and_check_dim(translated_question)
+    if err_resp:
+        return err_resp, err_code
 
+    # Generate full answer (best-effort)
     try:
         answer_ar = answer_like_lawyer_gemini(translated_question, articles)
+        resp = {
+            "articles": articles,
+            "answer_ar": answer_ar,
+            "fallback_used": False
+        }
     except Exception as e:
-        return jsonify({"error": "Answer generation failed", "detail": str(e)}), 500
+        # Fallback structured answer
+        fallback = format_fallback_answer(question, articles, lang="ar", short=False)
+        resp = {
+            "articles": articles,
+            "answer_ar": fallback,
+            "fallback_used": True,
+            "error_detail": f"answer generation failed: {e}"
+        }
 
-    resp = {"articles": articles, "answer_ar": answer_ar}
+    # Return in requested language
     try:
-        if lang == "en":
-            ans_en = translate_text(answer_ar, "Arabic", "English")
+        if lang == "en" and not SAFE_MODE:
+            ans_en = translate_text(resp["answer_ar"], "Arabic", "English")
             resp["answer"] = ans_en
             resp["answer_en"] = ans_en
         else:
-            resp["answer"] = answer_ar
+            resp["answer"] = resp["answer_ar"]
     except Exception as e:
-        resp["answer"] = answer_ar
+        resp["answer"] = resp["answer_ar"]
         resp["translation_error"] = str(e)
+
     return jsonify(resp)
 
 # ===============================
