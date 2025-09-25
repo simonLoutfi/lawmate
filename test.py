@@ -259,15 +259,15 @@ def askai_short():
         traceback.print_exc()
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
-@app.route('/api/askai', methods=['POST', 'OPTIONS'])
+@app.route('/api/askai', methods=['POST'])
 def askai():
     # Handle preflight OPTIONS request
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'preflight'})
-        response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
-        return response, 200
+    # if request.method == 'OPTIONS':
+    #     response = jsonify({'status': 'preflight'})
+    #     response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
+    #     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    #     response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+    #     return response, 200
         
     try:
         data = request.get_json()
@@ -327,7 +327,7 @@ def askai():
             response_data['answer_ar'] = answer_arabic
 
         response = jsonify(response_data)
-        response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
+        # response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
         return response
 
     except Exception as e:
