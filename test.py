@@ -1,5 +1,3 @@
-
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import google.generativeai as genai
@@ -54,14 +52,11 @@ except Exception as e:
 
 print("=== STARTUP: All files loaded successfully ===")
 
-# Will test API after function definitions
-
 
 # === Gemini Helper Functions ===
 def get_embedding_from_gemini(text):
     """Get text embedding using Gemini's embedding model"""
     try:
-        # Use the correct embedding function from genai
         result = genai.embed_content(
             model="models/embedding-001",
             content=text,
@@ -145,23 +140,15 @@ def short_conclusion_gemini(question, retrieved_articles):
 # === Flask API Setup ===
 app = Flask(__name__)
 
-# Configure CORS with more explicit settings
+# Configure CORS properly
 CORS(app, 
      origins=["https://lawmate-lb.netlify.app", "http://localhost:3000"],
      allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     supports_credentials=True,
-     max_age=3600)
-
-# Remove the after_request handler to avoid duplicate headers
-# The CORS extension will handle all the headers automatically
+     supports_credentials=True)
 
 @app.route('/api/askai/short', methods=['POST', 'OPTIONS'])
 def askai_short():
-    # Handle preflight OPTIONS request
-    if request.method == 'OPTIONS':
-        return '', 200
-        
     try:
         print("=== DEBUG: Starting askai_short ===")
         
@@ -263,14 +250,6 @@ def askai_short():
 
 @app.route('/api/askai', methods=['POST', 'OPTIONS'])
 def askai():
-    # Handle preflight OPTIONS request
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'preflight'})
-        response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
-        return response, 200
-        
     try:
         data = request.get_json()
         if not data:
@@ -328,9 +307,7 @@ def askai():
             response_data['answer'] = answer_arabic
             response_data['answer_ar'] = answer_arabic
 
-        response = jsonify(response_data)
-        response.headers.add('Access-Control-Allow-Origin', 'https://lawmate-lb.netlify.app')
-        return response
+        return jsonify(response_data)
 
     except Exception as e:
         print(f"Error in askai: {str(e)}")
